@@ -1,5 +1,4 @@
 from telebot.types import Message
-
 from config_data.config import DEFAULT_COMMANDS
 from loader import bot
 
