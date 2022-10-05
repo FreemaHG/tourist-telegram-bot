@@ -1,29 +1,35 @@
 import telebot
 from decouple import config  # Импортируем переменные среды, хранящиеся в файле .env
 from telebot import types
-from app.botrequests.lowprice import lowprice
+from botrequests.lowprice import func_lowprice
 
-# from collections import OrderedDict
 
 TOKEN = config('TOKEN')  # Получаем токен из переменной среды
 bot = telebot.TeleBot(TOKEN)  # Создаем бота (передаем токен)
 
 
-city = ''
-lot_result = 25
-photo_output = False
-lot_photo = 0
-min_price = 0
-max_price = 0
-min_distance = 0
-max_distance = 0
-switch = False
+# 1 вариант
+# Вообще не работает
+def register_handlers():
+    bot.register_message_handler(func_lowprice, commands=['lowprice1'], admin=True, pass_bot=True)
+
+register_handlers()
 
 
-# ВАЖНО: первым делом обрабатываются команды
+# 2 вариант
+# Работает только 1 шаг (выбор города)
+@bot.message_handler(commands=['lowprice2'])
+def wrap_lowprice(message):
+    print('Сработала команда lowprice')
+    func_lowprice(message, bot)
+
+
+
+
+
 @bot.message_handler(commands=['hello-world'])
 def hello_world(message):
-    bot.send_message(message.chat.id, 'Привет мир!!! Я родился 7.09.2021...')
+    bot.send_message(message.chat.id, 'Привет мир!!!')
 
 
 @bot.message_handler(commands=['help'])  # Не работает
@@ -36,12 +42,10 @@ def hint(message):
                           '/history — вывод истории поиска отелей')
 
 
-# @bot.message_handler(commands=['lowprice'])
-# def wrap_lowprice(message):
-#     print('Сработала команда lowprice')
-#     lowprice(message)
 
-bot.message_handler(commands=['lowprice'])(lowprice)
+
+
+# bot.message_handler(commands=['lowprice'])(lowprice)
 
 #     bot.send_message(message.from_user.id, 'Укажите город для поиска')
 #     bot.register_next_step_handler(message, choosing_a_city)
@@ -83,16 +87,16 @@ bot.message_handler(commands=['lowprice'])(lowprice)
 
 
 # ВАЖНО: текст обрабатывается ПОЛСЕ команд!!!
-@bot.message_handler(content_types=['text'])
-def message_reply(message):
-    if message.text == 'Привет':
-        first_name = message.from_user.first_name
-        if first_name:
-            bot.send_message(message.chat.id, f'Привет, {first_name}!')
-        else:
-            bot.send_message(message.chat.id, 'Привет!')
-    else:
-        bot.reply_to(message, message.text)
+# @bot.message_handler(content_types=['text'])
+# def message_reply(message):
+#     if message.text == 'Привет':
+#         first_name = message.from_user.first_name
+#         if first_name:
+#             bot.send_message(message.chat.id, f'Привет, {first_name}!')
+#         else:
+#             bot.send_message(message.chat.id, 'Привет!')
+#     else:
+#         bot.reply_to(message, message.text)
 
 
 # @bot.message_handler(commands=['button'])
@@ -208,6 +212,7 @@ def message_reply(message):
 
 
 if __name__ == '__main__':
-    bot.polling(none_stop=True, interval=0)
+    # bot.polling(none_stop=True, interval=0)
+    bot.infinity_polling()
 
 

@@ -1,47 +1,29 @@
-import telebot
-from decouple import config  # Импортируем переменные среды, хранящиеся в файле .env
-#
-TOKEN = config('TOKEN')  # Получаем токен из переменной среды
-bot = telebot.TeleBot(TOKEN)  # Создаем бота (передаем токен)
+from telebot import TeleBot
+from telebot.types import Message
 
 
-import json
-import requests
-import re
-from telebot.types import InputMediaPhoto
-
-# 3 и 4 этапы можно объединить (2 раза пробегаюсь по отелям!!!!)
-# Обработка ошибок и неверного ввода пользователем
-
-
-class InputData:
-    def __init__(self, city=None, number_or_results=3, output_photo=False, count_photo=False):
-        self.city = city
-        self.number_or_results = number_or_results
-        self.output_of_photo = output_photo
-        self.number_of_photo = count_photo
+# class InputData:
+#     def __init__(self, city=None, number_or_results=3, output_photo=False, count_photo=False):
+#         self.city = city
+#         self.number_or_results = number_or_results
+#         self.output_of_photo = output_photo
+#         self.number_of_photo = count_photo
 
 
-# city = ''
-lot_result = str(0)  # Исправить!!!
-photo_output = False  # См.!!!!!
-lot_photo = 0
-database = dict()  # База для сохранения результата
-
-
-def lowprice(message):
+# @TeleBot.message_handler(commands=['lowprice'])
+def func_lowprice(message: Message = Message, bot: TeleBot = TeleBot):
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
     city = message.text
     print(f'Выбран город: {city}')
     bot.register_next_step_handler(message, number_of_result)
 
-def number_of_result(message):
+def number_of_result(message: Message = Message, bot: TeleBot = TeleBot):
     bot.send_message(message.from_user.id, 'Кол-во отелей в выдаче (не более 25!)')
     number_or_results = message.text
     print(f'Выбрано кол-во отелей: {number_or_results}')
     bot.register_next_step_handler(message, output_of_photo)
 
-def output_of_photo(message):
+def output_of_photo(message: Message = Message, bot: TeleBot = TeleBot):
     bot.send_message(message.from_user.id, 'Выводить фото отелей?')
     if message.text == 'Да' or message.text == 'да':
         print('Выбрано выводить фото')
@@ -49,7 +31,7 @@ def output_of_photo(message):
     else:
         bot.reply_to(message, 'Одну секунду, ищу подходящие варианты...')
 
-def number_of_photo(message):
+def number_of_photo(message: Message = Message, bot: TeleBot = TeleBot):
     bot.send_message(message.from_user.id, 'Кол-во фото в выдаче?')
     lot_photos = message.text
     print(f'Выбрано кол-во фото: {lot_photos}')
@@ -256,4 +238,4 @@ def number_of_photo(message):
 
 
 
-# bot.polling(none_stop=True, interval=0)
+
