@@ -1,5 +1,6 @@
 from telebot.types import Message  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
+from utils.request_for_api.request_for_lowprice import get_id_location
 from loader import bot
 from loguru import logger  # Для логирования
 
@@ -17,6 +18,9 @@ def bot_lowprice(message: Message) -> None:
 def get_city(message: Message) -> None:
     """ Запрашиваем кол-во выводимых отелей """
     # Проверка на корректность ввода данных пользователем
+
+    # ВАЖНО: сделать так, чтобы города с дефисом проходили проверку!!!
+
     if message.text.isalpha():  # Если введены слова
         bot.send_message(message.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')  # Принимаем ответ и задаем новый вопрос
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
@@ -97,6 +101,9 @@ def get_photos(message: Message) -> None:
 
         logger.debug(f'user_id({message.from_user.id}) | вызов API ')
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
+        get_id_location(data['city'])
+
+        # Добавить кнопки с соседними районами (посмотреть варианты)
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_photos - предыдущий шаг
@@ -123,7 +130,10 @@ def get_number_of_photos(message: Message) -> None:
         bot.send_message(message.from_user.id, main_text)
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
+        get_id_location(data['city'])
         logger.debug(f'user_id({message.from_user.id}) | вызов API ')
+
+        # Добавить кнопки с соседними районами (посмотреть варианты)
 
     else:  # Если введены НЕ числа
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
