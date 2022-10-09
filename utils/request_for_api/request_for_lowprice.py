@@ -1,6 +1,7 @@
 from config_data.config import RAPID_API_KEY
 from database.create_db import Cities, session
-from database.create_db import Base, engine  # УДАЛИТЬ ПОСЛЕ ОТЛАДКИ!!!
+from database.check_location_for_lowprice import check_location  # Проверка локации в БД
+from utils.misc.address_conversion import func_address_conversion
 import requests
 from requests import request, get
 import json
@@ -34,8 +35,16 @@ def request_to_api(url, headers, querystring) -> json:
 
 
 
-def get_id_location(city: str) -> None:
+def get_id_location(city: str) -> int:
     """ Получаем id локации """
+
+    # Проверка локации по уже имеющимся данным из БД
+    location_id = check_location(city)
+
+    # Проверить!!!
+    if location_id:
+        return location_id
+
     response = request_to_api(url=URL, headers=HEADERS, querystring={"query": city, "locale": "ru_RU"})
 
     # Проверка шаблоном перед извлечением ключа
@@ -46,50 +55,64 @@ def get_id_location(city: str) -> None:
         result = json.loads(f"{{{find[0]}}}")
         data = result['entities']
         logger.debug(f' проверка полученных данных API | entities найден')
-        start_index = 0
         parent_id = None
 
-        if data[0]['type'] == 'CITY':
-            start_index = 1
-            # print('\nРодительская запись')
-            # print('Город:', data[0]['name'])
-            # print('id:', data[0]['destinationId'])
+        for location in data:
+            id_location = location['destinationId']
+            location_name = location['name']
+            type_location = location['type']
+            address = location['caption']
 
-            parent_id = data[0]['destinationId']
-            parent_city = data[0]['name']
-            logger.info(f' сохранение данных локации | родительская локация: id - {parent_id}, city: {city}')
+            # Преобразуем адрес в строку корректного вида
+            correct_address = func_address_conversion(address)
 
-            # Создаем РОДИТЕЛЬСКУЮ запись в БД
-            new_parent_location = Cities(
-                id=parent_id,
-                city=parent_city
-            )
+            # НЕ КОРРЕКТНО (СОВПАДЕНИЕ МОЖЕТ БЫТЬ И НЕ В ГОРОДЕ!!!)
+            if type_location == 'CITY':
+                parent_id = id_location
 
-            session.merge(new_parent_location)  # Сохраняем данные в текущей сессии
-            logger.info(f' сохранение данных локации в БД | родительская локация: id - {parent_id}, city: {parent_city}')
+                if location_name == city:
+                    output_id = parent_id
 
-        # for place in result['entities'][start_index:]:
-        for place in data[start_index:]:
-            id_child_city = place['destinationId']
-            city_child = place['name']
-
-            # print('\nДочерняя запись')
-            # print('Город:', place['name'])
-            # print('id:', place['destinationId'])
-
-            # Создаем ДОЧЕРНИЕ записи в БД
-            new_child_location = Cities(
-                id=id_child_city,
-                parent_id=parent_id,
-                city=city_child
-            )
-
-            session.merge(new_child_location)  # Сохраняем данные в текущей сессии
-            logger.info(f' сохранение данных локации в БД | дочерняя локация: id - {id_child_city}, city: {city_child}')
-
+                # Создаем РОДИТЕЛЬСКУЮ запись в БД
+                new_parent_location = Cities(
+                    id=id_location,
+                    location=location_name,
+                    address=correct_address,
+                    type=type_location)
+                session.merge(new_parent_location)  # Сохраняем данные в текущей сессии
+                logger.info(
+                    f' сохранение данных локации в БД | родительская локация: id - {id_location}, '
+                    f'city: {location_name}')
+            else:
+                # Создаем ДОЧЕРНЮЮ запись в БД
+                new_child_location = Cities(
+                    id=id_location,
+                    parent_id=parent_id,
+                    location=location_name,
+                    address=correct_address,
+                    type=type_location
+                )
+                session.merge(new_child_location)  # Сохраняем данные в текущей сессии
+                logger.info(
+                    f' сохранение данных локации в БД | дочерняя локация: id - {id_location}, '
+                    f'city: {location_name}'
+                )
         session.commit()  # Сохраняем записи в БД
         logger.info(f' сохранение данных локации в БД | внесение новых данных в БД')
 
+        return output_id
+
+
+def get_id_hostels(id_location: int):
+    """ Получаем id отелей в указанной локации """
+    ...
+
+
+
+def get_result(location: str, number_of_hotels: int, number_of_photos: int = 0):
+    """ Получение результатов по переданным данным """
+
+    id_location = get_id_location(location)
 
 
 

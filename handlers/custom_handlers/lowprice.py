@@ -1,6 +1,6 @@
 from telebot.types import Message  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
-from utils.request_for_api.request_for_lowprice import get_id_location
+from utils.request_for_api.request_for_lowprice import get_result
 from loader import bot
 from loguru import logger  # Для логирования
 
@@ -99,9 +99,12 @@ def get_photos(message: Message) -> None:
 
         bot.send_message(message.from_user.id, main_text)
 
-        logger.debug(f'user_id({message.from_user.id}) | вызов API ')
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        get_id_location(data['city'])
+        logger.debug(f'user_id({message.from_user.id}) | вызов API ')
+        get_result(
+            location=data["city"],
+            number_of_hotels=data["number_of_hotels"]
+        )
 
         # Добавить кнопки с соседними районами (посмотреть варианты)
 
@@ -130,8 +133,12 @@ def get_number_of_photos(message: Message) -> None:
         bot.send_message(message.from_user.id, main_text)
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        get_id_location(data['city'])
         logger.debug(f'user_id({message.from_user.id}) | вызов API ')
+        get_result(
+            location=data["city"],
+            number_of_hotels=data["number_of_hotels"],
+            number_of_photos=data["number_of_photos"]
+        )
 
         # Добавить кнопки с соседними районами (посмотреть варианты)
 
