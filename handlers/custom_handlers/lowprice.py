@@ -1,6 +1,6 @@
 from telebot.types import Message  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
-from utils.request_for_api.request_for_lowprice import get_result
+from utils.request_for_api.lowprice.low_get_result import get_result
 from loader import bot
 from loguru import logger  # Для логирования
 
@@ -22,7 +22,8 @@ def get_city(message: Message) -> None:
     # ВАЖНО: сделать так, чтобы города с дефисом проходили проверку!!!
 
     if message.text.isalpha():  # Если введены слова
-        bot.send_message(message.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')  # Принимаем ответ и задаем новый вопрос
+        # Принимаем ответ и задаем новый вопрос
+        bot.send_message(message.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
 
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
@@ -100,11 +101,19 @@ def get_photos(message: Message) -> None:
         bot.send_message(message.from_user.id, main_text)
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        logger.debug(f'user_id({message.from_user.id}) | вызов API ')
+        # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
+        # bot.register_next_step_handler(message, get_result(
+        #     location=data["city"],
+        #     number_of_hotels=data["number_of_hotels"]
+        # ))
+
         get_result(
             location=data["city"],
             number_of_hotels=data["number_of_hotels"]
         )
+
+        # if not response:
+        #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
 
         # Добавить кнопки с соседними районами (посмотреть варианты)
 
@@ -133,15 +142,29 @@ def get_number_of_photos(message: Message) -> None:
         bot.send_message(message.from_user.id, main_text)
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        logger.debug(f'user_id({message.from_user.id}) | вызов API ')
+        # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
+        # bot.register_next_step_handler(message, get_result(
+        #     location=data["city"],
+        #     number_of_hotels=data["number_of_hotels"],
+        #     number_of_photos=data["number_of_photos"]
+        # ))
+
         get_result(
             location=data["city"],
             number_of_hotels=data["number_of_hotels"],
             number_of_photos=data["number_of_photos"]
         )
 
+        # if not response:
+        #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
+
         # Добавить кнопки с соседними районами (посмотреть варианты)
 
     else:  # Если введены НЕ числа
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число')
+
+
+# def response_to_the_user(message: Message):
+#     """ Возвращаем пользователю найденные ответы """
+#     bot.send_message(message.from_user.id, 'Одну секунду, ищу подходящие варианты...')
