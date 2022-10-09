@@ -8,7 +8,7 @@ from utils.set_bot_commands import set_default_commands, set_custom_commands
 if __name__ == '__main__':
     Base.metadata.create_all(engine)  # Создаем БД при первом запуске бота (проверить, что БД не перезаписывается!!!)
     bot.add_custom_filter(StateFilter(bot))  # Включаем в боте поддержку состояний
-    set_default_commands(bot)  # Устанавливаем стандартные команды
+    set_default_commands(bot)  # Устанавливаем стандартные команды (ПОЧЕМУ НЕТ В СПИСКЕ КОМАНД???)
     set_custom_commands(bot)  # Устанавливаем кастомные команды
     bot.infinity_polling()  # Всегда проверяем обновления (новые сообщения)
 

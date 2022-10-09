@@ -15,7 +15,7 @@ def request_to_api(url, querystring) -> json:
     """ Запрос к API """
     try:
         response = get(url, headers=HEADERS, params=querystring, timeout=10)
-        logger.debug(f' запрос к API | url: {url}, город: {querystring["query"]}')
+        logger.debug(f' запрос к API | url: {url}, передаваемые параметры: {querystring}')
         if response.status_code == requests.codes.ok:  # Проверка успешности ответа перед возвращением результата
             logger.debug(f' запрос к API | успешно')
             return response

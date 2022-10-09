@@ -1,4 +1,4 @@
-from database.create_db import Cities, session
+from database.create_db import Locations, session
 from loguru import logger
 
 
@@ -6,7 +6,7 @@ def create_new_location(id_location: int, location: str, address: str, location_
     """ Создаем новую запись о локации в БД """
 
     if parent_id is None:
-        new_location = Cities(
+        new_location = Locations(
             id=id_location,
             location=location,
             address=address,
@@ -18,7 +18,7 @@ def create_new_location(id_location: int, location: str, address: str, location_
             f'city: {location}')
 
     else:
-        new_location = Cities(
+        new_location = Locations(
             id=id_location,
             parent_id=parent_id,
             location=location,

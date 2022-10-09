@@ -25,10 +25,10 @@ def get_id_location(city: str) -> int:
     pattern = r'(?<="CITY_GROUP",).+?[\]]'
     find = re.search(pattern, response.text)
     if find:
-        logger.debug(f' проверка полученных данных API | CITY_GROUP найден')
+        logger.debug(f'API | CITY_GROUP найден')
         result = json.loads(f"{{{find[0]}}}")
         data = result['entities']
-        logger.debug(f' проверка полученных данных API | entities найден')
+        logger.debug(f'API | entities найден')
 
         parent_location = data[0]
         parent_id = parent_location['destinationId']
@@ -68,4 +68,5 @@ def get_id_location(city: str) -> int:
         return parent_id
 
     else:  # Нет результатов
+        logger.warning(f'API | id локации не найдена')
         return False
