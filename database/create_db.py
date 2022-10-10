@@ -30,7 +30,7 @@ class Hotels(Base):
     id_location = Column(Integer, ForeignKey('locations.id'))  # Внешний ключ на id локации
     name = Column(String(300), nullable=False)
     address = Column(String(500), nullable=False)
-    distance_to_center = Column(String(100), nullable=False)
+    distance_to_center = Column(String(100), nullable=True)
     price = Column(Float, nullable=False)
 
     photos = relationship('Photos', backref='hotels')  # Связь с таблицей "Photos"

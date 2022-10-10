@@ -19,16 +19,21 @@ def get_id_location(city: str) -> int:
     if location_id:
         return location_id
 
+    # Выполняем запрос к API
     response = request_to_api(url=URL, querystring={"query": city, "locale": "ru_RU"})
 
     # Проверка шаблоном перед извлечением ключа
     pattern = r'(?<="CITY_GROUP",).+?[\]]'
     find = re.search(pattern, response.text)
     if find:
-        logger.debug(f'API | CITY_GROUP найден')
+        logger.debug('API | CITY_GROUP найден')
         result = json.loads(f"{{{find[0]}}}")
         data = result['entities']
-        logger.debug(f'API | entities найден')
+        logger.debug('API | entities найден')
+
+        if not data:
+            logger.error('API | данных по локациям нет')
+            return False
 
         parent_location = data[0]
         parent_id = parent_location['destinationId']
