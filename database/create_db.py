@@ -41,5 +41,5 @@ class Photos(Base):
 
     id = Column(Integer, primary_key=True)
     id_hotel = Column(Integer, ForeignKey('hotels.id'))  # Внешний ключ на id отеля
-    url = Column(String, nullable=False)
+    path = Column(String, nullable=False)
     type = Column(String(50), nullable=False)  # room / hotel
