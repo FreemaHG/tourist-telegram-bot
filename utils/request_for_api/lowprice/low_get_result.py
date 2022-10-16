@@ -5,6 +5,7 @@ from utils.request_for_api.api_request import request_to_api
 
 from multiprocessing.pool import ThreadPool
 import multiprocessing
+from loguru import logger
 
 
 def get_result(location: str, number_of_hotels: int, number_of_photos: int = 0):
@@ -28,9 +29,16 @@ def get_result(location: str, number_of_hotels: int, number_of_photos: int = 0):
     pool = ThreadPool(
         processes=multiprocessing.cpu_count() * 5)  # Запускаем потоков в 5 раз больше, чем есть у нас ядер
 
-    for id_hotel in id_hostels_list:
-        async_response = pool.apply_async(get_and_save_photos, id_hotel)
-        return_response = async_response.get()  # Нужно ли???
+    # Тестируемый момент
+    async_response = pool.map(get_and_save_photos,
+                                      id_hostels_list)  # Ошибка - вместо id_hotel должен быть итерируемый объект
+    # return_response = async_response.get()  # Нужно ли???
 
+    # for id_hotel in id_hostels_list:
+    #     async_response = pool.apply_async(get_and_save_photos, id_hotel)  # Ошибка - вместо id_hotel должен быть итерируемый объект
+    #     return_response = async_response.get()  # Нужно ли???
 
+    pool.close()  # Обязательно закрываем объект Pool
+    pool.join()
 
+    print('Результат:', async_response)

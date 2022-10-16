@@ -11,5 +11,5 @@ def create_new_photo(id_hotel: int, path: str, type_photo: str):
         type=type_photo
     )
 
-    logger.debug(f'сохранение нового фото | id отеля: {id_hotel}, путь: {path}, тип: {type_photo}')
     session.merge(new_photo)  # Сохраняем данные (только новые) в текущей сессии
+    logger.debug(f'сохранение нового фото | id отеля: {id_hotel}, путь: {path}, тип: {type_photo}')

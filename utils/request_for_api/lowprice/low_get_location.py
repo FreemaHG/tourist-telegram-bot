@@ -22,6 +22,9 @@ def get_id_location(city: str) -> int:
     # Выполняем запрос к API
     response = request_to_api(url=URL, querystring={"query": city, "locale": "ru_RU"})
 
+    if response is False:
+        return False
+
     # Проверка шаблоном перед извлечением ключа
     pattern = r'(?<="CITY_GROUP",).+?[\]]'
     find = re.search(pattern, response.text)

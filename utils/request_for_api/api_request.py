@@ -19,6 +19,10 @@ def request_to_api(url, querystring) -> json:
         if response.status_code == requests.codes.ok:  # Проверка успешности ответа перед возвращением результата
             logger.debug(f' запрос к API | успешно')
             return response
+        else:
+            logger.error(f' запрос к API | ответ {response.status_code}')
+            return False
+            # Добавить вывод сообщения в телеграмм
     # Обработка долгого соединения
     except:
         logger.error(f' запрос к API | url: {url}, город: {querystring["query"]} - НЕУДАЧА!')
