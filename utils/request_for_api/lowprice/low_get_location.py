@@ -14,7 +14,7 @@ from typing import Union, List, Dict, Any
 URL = 'https://hotels4.p.rapidapi.com/locations/v2/search'
 
 
-def get_id_location(city: str) -> Union[List[dict[str, Union[str, Any]]], bool]:  # Добавить аннотацию для возвращаемого результата
+def get_id_location(city: str) -> Union[List[dict[str, Union[str, Any]]], bool]:
     """ Получаем id локаций """
 
     location_id_list = []  # Список для вывода результатов

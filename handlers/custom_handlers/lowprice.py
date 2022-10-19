@@ -21,12 +21,20 @@ def city(message: Message):
     """ Уточняем локацию по найденным совпадениям """
 
     if message.text.isalpha():  # Если введены слова
+
+        if message.text == 'стоп':
+            bot.send_message(message.from_user.id, 'Возвращайтесь...')
+            logger.warning(f'user_id({message.from_user.id}) | пользователь прекратил сценарий')
+            return False
+
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['location_name'] = message.text  # Сохраняем id локации
             logger.info(f'user_id({message.from_user.id}) | введен город: {message.text}')
             bot.send_message(message.from_user.id,
-                             'Пожалуйста, уточните место из предложенных или введите другую локацию:',
+                             'Пожалуйста, уточните место из предложенных или введите другую локацию '
+                             '(или введите "стоп" для остановки):',
                               reply_markup=city_markup(message.text))  # Отправляем кнопки с вариантами
+
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Название города может содержать только буквы!')
@@ -38,7 +46,7 @@ def callback_for_city(call):
 
     id_location = call.data
 
-    # Сохраняем введенные пользователем данные
+    # Сохраняем id выбранной локации
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['city_id'] = id_location  # Сохраняем id локации
         logger.info(f'user_id({call.from_user.id}) | данные сохранены: {id_location}')
@@ -51,19 +59,29 @@ def callback_for_city(call):
 @bot.message_handler(state=UserInfoForLowprice.number_of_hotels)
 def get_number_of_hotels(message: Message) -> None:
     """ Запрашиваем нужно ли выводить фото отелей """
+
     # Проверка на корректность ввода данных пользователем
-    if message.text.isdigit():  # Если введено число (СДЕЛАТЬ ПРОВЕРКУ НЕ БОЛЕЕ 25!!!)
+    if message.text.isdigit():
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
-        # Принимаем ответ и задаем новый вопрос
+
+        # Сохраняем введенные пользователем данные
+        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+            if int(message.text) > 25:
+                logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
+                count_hotels = 25
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во отелей: 25')
+            else:
+                count_hotels = message.text
+
+            data['number_of_hotels'] = count_hotels  # Сохраняем введенное пользователем число
+
+        logger.info(f'user_id({message.from_user.id}) | данные сохранены: {count_hotels}')
+
+        # Задаем новый вопрос
         bot.send_message(message.from_user.id, 'Хорошо. Нужно выводить фото отелей?')
 
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.photos, message.chat.id)
-
-        # Сохраняем введенные пользователем данные
-        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['number_of_hotels'] = message.text  # Сохраняем введенное пользователем число
-            logger.info(f'user_id({message.from_user.id}) | данные сохранены: {message.text}')
 
     else:  # Если введены НЕ числа
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число (не более 25!)')
@@ -82,7 +100,7 @@ def get_photos(message: Message) -> None:
         logger.info(f'user_id({message.from_user.id}) | выбрано вывод фото')
         result = True
         # Принимаем ответ и задаем новый вопрос
-        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям?')
+        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям (не более 10!)?')
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_photos, message.chat.id)
 
@@ -127,8 +145,6 @@ def get_photos(message: Message) -> None:
         # if not response:
         #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
 
-        # Добавить кнопки с соседними районами (посмотреть варианты)
-
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_photos - предыдущий шаг
 @bot.message_handler(state=UserInfoForLowprice.number_of_photos)
@@ -137,12 +153,21 @@ def get_number_of_photos(message: Message) -> None:
     # Проверка на корректность ввода данных пользователем
     if message.text.isdigit():  # Если введено число
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
-        bot.send_message(message.from_user.id, 'Все понял, сейчас поищу варианты...')
 
         # Сохраняем введенные пользователем данные
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['number_of_photos'] = message.text  # Сохраняем введенное пользователем число
-            logger.info(f'user_id({message.from_user.id}) | данные сохранены: {message.text}')
+            if int(message.text) > 10:
+                logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
+                count_photos = 10
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во фото: 10')
+            else:
+                count_photos = message.text
+
+            data['number_of_photos'] = count_photos  # Сохраняем введенное пользователем число
+
+        logger.info(f'user_id({message.from_user.id}) | данные сохранены: {count_photos}')
+
+        bot.send_message(message.from_user.id, 'Все понял, сейчас поищу варианты...')
 
         # ПРОВЕРКА ДАННЫХ
         main_text = f'Будет произведен поиск по следующим данным: \n' \
