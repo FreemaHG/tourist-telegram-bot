@@ -1,42 +1,50 @@
+from utils.request_for_api.lowprice.low_get_location import get_id_location, city_markup
+
 from telebot.types import Message  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
 from utils.request_for_api.lowprice.low_get_result import get_result
 from loader import bot
-from loguru import logger  # Для логирования
+from loguru import logger
 
 
 @bot.message_handler(commands=['lowprice'])
 def bot_lowprice(message: Message) -> None:
     """ Запрашиваем город для поиска """
+    logger.info('Запуск сценария')
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
     # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
     bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
 
 
-# Следующим шагом ловим указанное состояние пользователя (UserInfoForLowprice.city)
 @bot.message_handler(state=UserInfoForLowprice.city)
-def get_city(message: Message) -> None:
-    """ Запрашиваем кол-во выводимых отелей """
-    # Проверка на корректность ввода данных пользователем
-
-    # ВАЖНО: сделать так, чтобы города с дефисом проходили проверку!!!
+def city(message: Message):
+    """ Уточняем локацию по найденным совпадениям """
 
     if message.text.isalpha():  # Если введены слова
-        # Принимаем ответ и задаем новый вопрос
-        bot.send_message(message.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')
-        logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
-
-        # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
-        bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
-
-        # Сохраняем введенные пользователем данные
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['city'] = message.text  # Сохраняем указанный город
-            logger.info(f'user_id({message.from_user.id}) | данные сохранены: {message.text}')
-
-    else:  # Если введены числа
+            data['location_name'] = message.text  # Сохраняем id локации
+            logger.info(f'user_id({message.from_user.id}) | введен город: {message.text}')
+            bot.send_message(message.from_user.id,
+                             'Пожалуйста, уточните место из предложенных или введите другую локацию:',
+                              reply_markup=city_markup(message.text))  # Отправляем кнопки с вариантами
+    else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Название города может содержать только буквы!')
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_for_city(call):
+    """ Сохраняем точный id выбранной локации """
+
+    id_location = call.data
+
+    # Сохраняем введенные пользователем данные
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['city_id'] = id_location  # Сохраняем id локации
+        logger.info(f'user_id({call.from_user.id}) | данные сохранены: {id_location}')
+
+    bot.send_message(call.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')
+    bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_hotels - предыдущий шаг
@@ -46,7 +54,8 @@ def get_number_of_hotels(message: Message) -> None:
     # Проверка на корректность ввода данных пользователем
     if message.text.isdigit():  # Если введено число (СДЕЛАТЬ ПРОВЕРКУ НЕ БОЛЕЕ 25!!!)
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
-        bot.send_message(message.from_user.id, 'Хорошо. Нужно выводить фото отелей?')  # Принимаем ответ и задаем новый вопрос
+        # Принимаем ответ и задаем новый вопрос
+        bot.send_message(message.from_user.id, 'Хорошо. Нужно выводить фото отелей?')
 
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.photos, message.chat.id)
@@ -72,7 +81,8 @@ def get_photos(message: Message) -> None:
     if message.text.lower() == 'да':
         logger.info(f'user_id({message.from_user.id}) | выбрано вывод фото')
         result = True
-        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям?')  # Принимаем ответ и задаем новый вопрос
+        # Принимаем ответ и задаем новый вопрос
+        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям?')
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_photos, message.chat.id)
 
@@ -94,7 +104,8 @@ def get_photos(message: Message) -> None:
     if result is False:
         # ПРОВЕРКА ДАННЫХ
         main_text = f'Будет произведен поиск по следующим данным: \n' \
-                    f' - Город: {data["city"]}\n' \
+                    f' - Город: {data["location_name"]}\n' \
+                    f' - id локации: {data["city_id"]}\n' \
                     f' - Кол-во отелей: {data["number_of_hotels"]}\n' \
                     f' - Выводить фото: нет'
 
@@ -107,10 +118,11 @@ def get_photos(message: Message) -> None:
         #     number_of_hotels=data["number_of_hotels"]
         # ))
 
-        get_result(
-            location=data["city"],
-            number_of_hotels=data["number_of_hotels"]
-        )
+        # ЗАПУСК СКРИПТА
+        # get_result(
+        #     location=data["city"],
+        #     number_of_hotels=data["number_of_hotels"]
+        # )
 
         # if not response:
         #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
@@ -134,7 +146,8 @@ def get_number_of_photos(message: Message) -> None:
 
         # ПРОВЕРКА ДАННЫХ
         main_text = f'Будет произведен поиск по следующим данным: \n' \
-                    f' - Город: {data["city"]}\n' \
+                    f' - Город: {data["location_name"]}\n' \
+                    f' - id локации: {data["city_id"]}\n' \
                     f' - Кол-во отелей: {data["number_of_hotels"]}\n' \
                     f' - Выводить фото: да\n' \
                     f' - Кол-во выводимых фото: {data["number_of_photos"]}'
@@ -149,11 +162,12 @@ def get_number_of_photos(message: Message) -> None:
         #     number_of_photos=data["number_of_photos"]
         # ))
 
-        get_result(
-            location=data["city"],
-            number_of_hotels=data["number_of_hotels"],
-            number_of_photos=data["number_of_photos"]
-        )
+        # ЗАПУСК СКРИПТА
+        # get_result(
+        #     location=data["city"],
+        #     number_of_hotels=data["number_of_hotels"],
+        #     number_of_photos=data["number_of_photos"]
+        # )
 
         # if not response:
         #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')

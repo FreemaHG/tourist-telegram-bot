@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, create_engine, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
-# Проверить, где именно создается БД
+
 engine = create_engine('sqlite:///hostels_db', connect_args={'check_same_thread': False})
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
@@ -14,11 +14,8 @@ class Locations(Base):
 
     # id локации - не может быть пустым, уникальное, автоматически НЕ заполняется
     id = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=False)
-    parent_id = Column(Integer, nullable=True)  # id родительской локации
-    location = Column(String(200), nullable=False)  # Название локации
-    # Адрес локации (для уточнения, т.к. встречаются локации с одинаковыми названиями)
-    address = Column(String(400), nullable=False)
-    type = Column(String(100), nullable=False)  # Тип локации (город, регион, соседи (районы, улицы) и т.п.)
+    name = Column(String(200), nullable=False)  # Название локации
+    location = Column(String(500), nullable=False)  # Местоположение
 
     hotels = relationship('Hotels', backref='locations')  # Связь с таблицей "Hotels"
 

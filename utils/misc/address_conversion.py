@@ -1,5 +1,4 @@
-import re
-from loguru import logger  # Для логирования
+from loguru import logger
 
 
 def func_address_conversion(string: str) -> str:
@@ -8,18 +7,7 @@ def func_address_conversion(string: str) -> str:
     в читаемую 'Манхэттен, Нью-Йорк, США
     """
     logger.info(f"преобразование строки | входные данные: {string}")
-    words_list = string.split(' ')
-    pattern = re.compile(r'>(.*)<')
-    result_line = ''
-    for word in words_list:
-        if '<' not in word:
-            result_line += word + ' '
-        else:
-            correct_world = pattern.search(word)
-            if correct_world is not None:
-                result_line += correct_world.group(1) + ', '
-
-    result = result_line[:-1]
-
+    result = string.replace("<span class='highlighted'>", "").replace("</span>", "")
     logger.info(f"преобразование строки | возвращаем строку: {result}")
+
     return result

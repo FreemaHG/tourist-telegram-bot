@@ -11,7 +11,7 @@ HEADERS = {
 }
 
 
-def request_to_api(url, querystring) -> json:
+def request_to_api(url, querystring) -> json:  # ИСправить аннотация - возвращает False
     """ Запрос к API """
     try:
         response = get(url, headers=HEADERS, params=querystring, timeout=10)
