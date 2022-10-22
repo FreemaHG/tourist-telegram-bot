@@ -11,19 +11,19 @@ HEADERS = {
 }
 
 
-def request_to_api(url, querystring) -> json:  # ИСправить аннотация - возвращает False
+def request_to_api(url, querystring) -> json:  # Исправить аннотация - возвращает False
     """ Запрос к API """
     try:
         response = get(url, headers=HEADERS, params=querystring, timeout=10)
-        logger.debug(f' запрос к API | url: {url}, передаваемые параметры: {querystring}')
+        logger.debug(f' запрос к API | url: {url}, параметры: {querystring}')
         if response.status_code == requests.codes.ok:  # Проверка успешности ответа перед возвращением результата
             logger.debug(f' запрос к API | успешно')
             return response
         else:
-            logger.error(f' запрос к API | ответ {response.status_code}')
+            logger.error(f' запрос к API | плохой ответ {response.status_code}')
             return False
-            # Добавить вывод сообщения в телеграмм
-    # Обработка долгого соединения
-    except:
-        logger.error(f' запрос к API | url: {url}, город: {querystring["query"]} - НЕУДАЧА!')
-        # Добавить вывод сообщения в телеграмм
+
+    except requests.exceptions.Timeout as e:  # Обработка долгого соединения
+        logger.error(f'запрос к API | НЕУДАЧА!')
+        logger.exception(e)  # Проверить!!!
+        return False

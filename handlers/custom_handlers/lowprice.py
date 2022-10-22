@@ -1,3 +1,4 @@
+# Структурировать вначале вызываемые модули, потом пакеты
 from utils.request_for_api.lowprice.low_get_location import get_id_location, city_markup
 
 from telebot.types import Message  # Для аннотации типов
@@ -20,20 +21,31 @@ def bot_lowprice(message: Message) -> None:
 def city(message: Message):
     """ Уточняем локацию по найденным совпадениям """
 
-    if message.text.isalpha():  # Если введены слова
+    if message.text.isalpha():  # Если введены слова (ЛОКЦИИ С ДЕФИСОМ НЕ ПРОХОДЯТ ПРОВЕРКУ!!!)
 
-        if message.text == 'стоп':
+        if message.text.lower() == 'стоп':
             bot.send_message(message.from_user.id, 'Возвращайтесь...')
             logger.warning(f'user_id({message.from_user.id}) | пользователь прекратил сценарий')
-            return False
 
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['location_name'] = message.text  # Сохраняем id локации
-            logger.info(f'user_id({message.from_user.id}) | введен город: {message.text}')
-            bot.send_message(message.from_user.id,
-                             'Пожалуйста, уточните место из предложенных или введите другую локацию '
-                             '(или введите "стоп" для остановки):',
-                              reply_markup=city_markup(message.text))  # Отправляем кнопки с вариантами
+            data['location_name'] = message.text  # Сохраняем название локации
+            logger.debug(f'user_id({message.from_user.id}) | данные сохранены: location_name - {message.text}')
+
+            # Передаем в функцию текст от пользователя, получаем локации от API и возвращаем пользователю
+            # варианты для уточнения локации в виде кнопок
+            result_location = city_markup(message.text)
+
+            if not result_location:
+                logger.error('Локации НЕ получены')
+                bot.send_message(message.from_user.id,
+                                 'К сожалению, сервис по предоставлению предложений по отелям не отвечает. '
+                                 'Попробуйте позже...')
+            else:
+                logger.info('Локации получены')
+                bot.send_message(message.from_user.id,
+                                 'Пожалуйста, уточните место из предложенных или введите другую локацию '
+                                 '(или введите "Стоп" для остановки):',
+                                  reply_markup=result_location)
 
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
@@ -44,12 +56,13 @@ def city(message: Message):
 def callback_for_city(call):
     """ Сохраняем точный id выбранной локации """
 
+    # id локации из кнопки (в data сохраняется id локации той кнопки, по которой нажал пользователь)
     id_location = call.data
 
     # Сохраняем id выбранной локации
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['city_id'] = id_location  # Сохраняем id локации
-        logger.info(f'user_id({call.from_user.id}) | данные сохранены: {id_location}')
+        logger.debug(f'user_id({call.from_user.id}) | данные сохранены: city_id - {id_location}')
 
     bot.send_message(call.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')
     bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
@@ -60,7 +73,7 @@ def callback_for_city(call):
 def get_number_of_hotels(message: Message) -> None:
     """ Запрашиваем нужно ли выводить фото отелей """
 
-    # Проверка на корректность ввода данных пользователем
+    # Проверка на корректность входных данных
     if message.text.isdigit():
         logger.info(f'user_id({message.from_user.id}) | данные приняты: {message.text}')
 
@@ -73,9 +86,9 @@ def get_number_of_hotels(message: Message) -> None:
             else:
                 count_hotels = message.text
 
-            data['number_of_hotels'] = count_hotels  # Сохраняем введенное пользователем число
+            data['number_of_hotels'] = count_hotels  # Сохраняем введенное пользователем число (не больше 25)
 
-        logger.info(f'user_id({message.from_user.id}) | данные сохранены: {count_hotels}')
+        logger.debug(f'user_id({message.from_user.id}) | данные сохранены: number_of_hotels - {count_hotels}')
 
         # Задаем новый вопрос
         bot.send_message(message.from_user.id, 'Хорошо. Нужно выводить фото отелей?')
@@ -93,9 +106,8 @@ def get_number_of_hotels(message: Message) -> None:
 def get_photos(message: Message) -> None:
     """ Запрашиваем кол-во выводимых фото отелей """
 
-    result = None
+    result = None  # Флаг
 
-    # Проверка на корректность ввода данных пользователем
     if message.text.lower() == 'да':
         logger.info(f'user_id({message.from_user.id}) | выбрано вывод фото')
         result = True
@@ -113,14 +125,14 @@ def get_photos(message: Message) -> None:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Пожалуйста, введите "Да" или "Нет"')
 
-    # Сохраняем введенные пользователем данные (ВОЗМОЖНО СОХРАНИТЬ В СЛЕДУЮЩЕМ ШАГЕ!!!)
+    # Сохраняем введенные пользователем данные
     if result is not None:
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['photos'] = result  # Сохраняем булевое значение (выводить или не выводить фото к отелям)
-            logger.info(f'user_id({message.from_user.id}) | данные сохранены: {message.text}')
+            logger.debug(f'user_id({message.from_user.id}) | данные сохранены: photos - {message.text}')
 
+    # УДАЛИТЬ ПОСЛЕ
     if result is False:
-        # ПРОВЕРКА ДАННЫХ
         main_text = f'Будет произведен поиск по следующим данным: \n' \
                     f' - Город: {data["location_name"]}\n' \
                     f' - id локации: {data["city_id"]}\n' \
@@ -132,15 +144,16 @@ def get_photos(message: Message) -> None:
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
         # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
         # bot.register_next_step_handler(message, get_result(
-        #     location=data["city"],
+        #     location=data["city_id"],
         #     number_of_hotels=data["number_of_hotels"]
         # ))
 
         # ЗАПУСК СКРИПТА
-        # get_result(
-        #     location=data["city"],
-        #     number_of_hotels=data["number_of_hotels"]
-        # )
+        logger.info('Данные собраны, передача параметров для запроса к API')
+        get_result(
+            id_location=data["city_id"],
+            number_of_hotels=data["number_of_hotels"]
+        )
 
         # if not response:
         #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
@@ -165,11 +178,11 @@ def get_number_of_photos(message: Message) -> None:
 
             data['number_of_photos'] = count_photos  # Сохраняем введенное пользователем число
 
-        logger.info(f'user_id({message.from_user.id}) | данные сохранены: {count_photos}')
+        logger.debug(f'user_id({message.from_user.id}) | данные сохранены: number_of_photos - {count_photos}')
 
         bot.send_message(message.from_user.id, 'Все понял, сейчас поищу варианты...')
 
-        # ПРОВЕРКА ДАННЫХ
+        # УДАЛИТЬ ПОСЛЕ
         main_text = f'Будет произведен поиск по следующим данным: \n' \
                     f' - Город: {data["location_name"]}\n' \
                     f' - id локации: {data["city_id"]}\n' \
@@ -182,17 +195,18 @@ def get_number_of_photos(message: Message) -> None:
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
         # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
         # bot.register_next_step_handler(message, get_result(
-        #     location=data["city"],
+        #     location=data["city_id"],
         #     number_of_hotels=data["number_of_hotels"],
         #     number_of_photos=data["number_of_photos"]
         # ))
 
         # ЗАПУСК СКРИПТА
-        # get_result(
-        #     location=data["city"],
-        #     number_of_hotels=data["number_of_hotels"],
-        #     number_of_photos=data["number_of_photos"]
-        # )
+        logger.info('Данные собраны, передача параметров для запроса к API')
+        get_result(
+            id_location=data["city_id"],
+            number_of_hotels=data["number_of_hotels"],
+            number_of_photos=data["number_of_photos"]
+        )
 
         # if not response:
         #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')

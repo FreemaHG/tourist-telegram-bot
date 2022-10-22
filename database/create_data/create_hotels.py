@@ -4,8 +4,11 @@ from typing import Union
 
 
 def create_new_hotel(
-        id_hotel: int, id_location: int, name: str, address: Union[str, bool], distance_to_center:
+        id_hotel: int, id_location: int,
+        name: str,
+        address: Union[str, bool], distance_to_center:
         Union[str, bool], price: Union[float, bool]):
+
     """ Создаем новую запись об отеле в БД """
 
     # Обязательные параметры
@@ -15,7 +18,7 @@ def create_new_hotel(
             name=name
         )
 
-    # Проверка не обязательных параметров
+    # Проверка не обязательных параметров (которые могут не встречаться в ответе от API)
     if address:
         new_hotel.address = address
 
@@ -25,5 +28,5 @@ def create_new_hotel(
     if price:
         new_hotel.price = price
 
-    logger.debug(f'сохранение нового отеля в текущей сессии | id: {id_hotel}, название: {name}')
     session.merge(new_hotel)  # Сохраняем данные (только новые) в текущей сессии
+    logger.debug(f'db | сохранение данных в сессии | id: {id_hotel}, название: {name}')

@@ -2,10 +2,11 @@ from database.create_db import Photos, session
 from loguru import logger
 
 
-def create_new_photo(id_hotel: int, path: str, type_photo: str):
+def create_new_photo(id_img: int, id_hotel: int, path: str, type_photo: str):
     """ Создаем новую запись с фото в БД """
 
     new_photo = Photos(
+        id=id_img,
         id_hotel=id_hotel,
         path=path,
         type=type_photo

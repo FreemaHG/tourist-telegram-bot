@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
 engine = create_engine('sqlite:///hostels_db', connect_args={'check_same_thread': False})
 Base = declarative_base()
-Session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine, autoflush=False)
 session = Session()
 
 
@@ -36,7 +36,7 @@ class Hotels(Base):
 class Photos(Base):
     __tablename__ = 'photos'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=False)
     id_hotel = Column(Integer, ForeignKey('hotels.id'))  # Внешний ключ на id отеля
     path = Column(String, nullable=False)
     type = Column(String(50), nullable=False)  # room / hotel
