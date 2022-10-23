@@ -1,16 +1,16 @@
 from database.create_db import Photos, session
 from loguru import logger
+from typing import Dict
 
 
-def create_new_photo(id_img: int, id_hotel: int, path: str, type_photo: str):
+def create_new_photo(data) -> None:
     """ Создаем новую запись с фото в БД """
 
     new_photo = Photos(
-        id=id_img,
-        id_hotel=id_hotel,
-        path=path,
-        type=type_photo
+        id_hotel=data['id_hotel'],
+        url=data['url'],
+        type=data['type']
     )
 
     session.merge(new_photo)  # Сохраняем данные (только новые) в текущей сессии
-    logger.debug(f'сохранение нового фото | id отеля: {id_hotel}, путь: {path}, тип: {type_photo}')
+    logger.debug(f'сохранение нового фото | id отеля: {data["id_hotel"]}, url: {data["url"]}, тип: {data["type"]}')

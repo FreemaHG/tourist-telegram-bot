@@ -1,7 +1,7 @@
 # Структурировать вначале вызываемые модули, потом пакеты
 from utils.request_for_api.lowprice.low_get_location import get_id_location, city_markup
 
-from telebot.types import Message  # Для аннотации типов
+from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
 from utils.request_for_api.lowprice.low_get_result import get_result
 from loader import bot
@@ -64,7 +64,7 @@ def callback_for_city(call):
         data['city_id'] = id_location  # Сохраняем id локации
         logger.debug(f'user_id({call.from_user.id}) | данные сохранены: city_id - {id_location}')
 
-    bot.send_message(call.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 25!)?')
+    bot.send_message(call.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
     bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
 
 
@@ -79,10 +79,10 @@ def get_number_of_hotels(message: Message) -> None:
 
         # Сохраняем введенные пользователем данные
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            if int(message.text) > 25:
+            if int(message.text) > 15:
                 logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
-                count_hotels = 25
-                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во отелей: 25')
+                count_hotels = 15
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во отелей: 10')
             else:
                 count_hotels = message.text
 
@@ -112,7 +112,7 @@ def get_photos(message: Message) -> None:
         logger.info(f'user_id({message.from_user.id}) | выбрано вывод фото')
         result = True
         # Принимаем ответ и задаем новый вопрос
-        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям (не более 10!)?')
+        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям (от 2 до 15)?')
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_photos, message.chat.id)
 
@@ -140,23 +140,18 @@ def get_photos(message: Message) -> None:
                     f' - Выводить фото: нет'
 
         bot.send_message(message.from_user.id, main_text)
+        bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
+
+        logger.info('Данные собраны, передача параметров для запроса к API')
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
         # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
-        # bot.register_next_step_handler(message, get_result(
-        #     location=data["city_id"],
+        bot.register_next_step_handler(message, response_to_the_user)
+
+        # get_result(
+        #     id_location=data["city_id"],
         #     number_of_hotels=data["number_of_hotels"]
-        # ))
-
-        # ЗАПУСК СКРИПТА
-        logger.info('Данные собраны, передача параметров для запроса к API')
-        get_result(
-            id_location=data["city_id"],
-            number_of_hotels=data["number_of_hotels"]
-        )
-
-        # if not response:
-        #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
+        # )
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_photos - предыдущий шаг
@@ -169,10 +164,14 @@ def get_number_of_photos(message: Message) -> None:
 
         # Сохраняем введенные пользователем данные
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            if int(message.text) > 10:
+            if int(message.text) > 15:
                 logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
-                count_photos = 10
-                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во фото: 10')
+                count_photos = 15
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во фото: 15')
+            elif int(message.text) < 2:
+                logger.warning(f'user_id({message.from_user.id}) | выбрано меньше допустимого значения: {message.text}')
+                count_photos = 2
+                bot.send_message(message.from_user.id, 'Будет выведено минимально допустимое кол-во фото: 2')
             else:
                 count_photos = message.text
 
@@ -191,33 +190,61 @@ def get_number_of_photos(message: Message) -> None:
                     f' - Кол-во выводимых фото: {data["number_of_photos"]}'
 
         bot.send_message(message.from_user.id, main_text)
+        bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
+
+        logger.info('Данные собраны, передача параметров для запроса к API')
 
         # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
         # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
-        # bot.register_next_step_handler(message, get_result(
-        #     location=data["city_id"],
+        bot.register_next_step_handler(message, response_to_the_user)
+
+        # get_result(
+        #     id_location=data["city_id"],
         #     number_of_hotels=data["number_of_hotels"],
         #     number_of_photos=data["number_of_photos"]
-        # ))
-
-        # ЗАПУСК СКРИПТА
-        logger.info('Данные собраны, передача параметров для запроса к API')
-        get_result(
-            id_location=data["city_id"],
-            number_of_hotels=data["number_of_hotels"],
-            number_of_photos=data["number_of_photos"]
-        )
-
-        # if not response:
-        #     bot.send_message(message.from_user.id, 'К сожалению, сервер пока не доступен...')
-
-        # Добавить кнопки с соседними районами (посмотреть варианты)
+        # )
 
     else:  # Если введены НЕ числа
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число')
 
 
-# def response_to_the_user(message: Message):
-#     """ Возвращаем пользователю найденные ответы """
-#     bot.send_message(message.from_user.id, 'Одну секунду, ищу подходящие варианты...')
+def response_to_the_user(message: Message):
+    """ Возвращаем пользователю найденные ответы """
+
+    bot.send_message(message.from_user.id, 'Ищем варианты, ожидайте...')
+
+    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        if data['photos'] is True:
+            result = get_result(
+                data["city_id"],
+                data["number_of_hotels"],
+                data["number_of_photos"]
+            )
+        else:
+            result = get_result(
+                data["city_id"],
+                data["number_of_hotels"]
+            )
+
+        if result is False:
+            logger.error('Данные не получены')
+            bot.send_message(message.from_user.id, 'К сожалению, API не отвечает...')
+        else:
+            logger.info('Данные получены')
+
+            for hotel in result:
+                print('237 hotel:', hotel)
+                # Ошибка - нужно передавать байты, а не строку!!!
+                media_group = [InputMediaPhoto(
+                    hotel['photos'][0],
+                    caption=f"Отель: {hotel['hotel']}"
+                            f"Адрес: {hotel['address']}"
+                            f"Расстояние от центра: {hotel['distance_to_center']}"
+                            f"Стоимость проживания за ночь: {hotel['price']}"
+                )]
+
+                for photo in hotel['photos'][1:]:
+                    media_group.append(photo)
+
+                bot.send_media_group(message.from_user.id, media=media_group)

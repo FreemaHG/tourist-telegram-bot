@@ -19,8 +19,7 @@ def get_id_location(city: str) -> Union[List[dict[str, Union[str, Any]]], bool]:
 
     location_id_list = []  # Список для вывода результатов
 
-    # Проверка локации в БД
-    locations = check_location(city)
+    locations = check_location(city)  # Проверка локации в БД
 
     if locations:
         for location in locations:

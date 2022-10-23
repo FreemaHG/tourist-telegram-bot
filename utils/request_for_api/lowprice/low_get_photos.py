@@ -1,8 +1,10 @@
 import threading
+from threading import Lock
 
 from utils.request_for_api.api_request import request_to_api
 from utils.misc.save_photos import save_photo  # Для сохранения img в static
 from database.create_db import session
+from database.create_data.create_photos import create_new_photo
 
 import re
 from loguru import logger
@@ -12,7 +14,7 @@ import requests
 from multiprocessing.pool import ThreadPool
 import multiprocessing
 
-
+LOCK = Lock()
 URL = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
 
 
@@ -21,8 +23,6 @@ def preparation_photos(id_hotel: int) -> bool:
 
     name, ident = threading.current_thread().name, threading.get_ident()  # имя и id потока
     images_urls_list = []  # Ссылки на нужные фото
-
-    # Нужна ли проверка в БД?!
 
     response = request_to_api(url=URL, querystring={"id": id_hotel})
 
@@ -37,16 +37,15 @@ def preparation_photos(id_hotel: int) -> bool:
         logger.info(f'thread | поток: {name}, id: {ident} | hotelId найден')
         result = json.loads(f"{{{find.group(1)}}}")
 
-        hotel_images = result['hotelImages'][:3]  # Сохраняем 3 фото отеля
+        hotel_images = result['hotelImages'][:5]  # 5 фото отеля
         logger.info(f'thread | поток: {name}, id: {ident} | hotelImages найден')
 
-        room_images = result['roomImages']
+        room_images = result['roomImages'][:10]  # 10 номеров
         logger.debug(f'thread | поток: {name}, id: {ident} | roomImages найден')
 
         # Фото отеля
         for img_h in hotel_images:
             url_img = img_h['baseUrl']  # url фото из ответа API
-            id_img = img_h['imageId']  # id фото
             url_img_with_size = url_img.replace('{size}', 'z')  # Задаем фото нужного размера (1000*667)
 
             # Подготавливаем данные по фото для запроса с сайта и сохранения локально в БД
@@ -54,7 +53,6 @@ def preparation_photos(id_hotel: int) -> bool:
                 {
                     'url': url_img_with_size,
                     'id_hotel': id_hotel,
-                    'id_image': id_img,
                     'type': 'hotel'
                 }
             )
@@ -63,11 +61,9 @@ def preparation_photos(id_hotel: int) -> bool:
 
         # Фото комнат
         for room in room_images:
-            id_room = room['roomId']  # Сохраняем id комнаты
-            images = room['images'][:2]  # Сохраняем по 2 фото каждой комнаты
+            images = room['images'][:3]  # По 3 фото каждой комнаты
 
             for img in images:
-                id_photo = img['imageId']
                 url_img = img['baseUrl']
                 url_img_with_size = url_img.replace('{size}', 'z')  # Задаем фото нужного размера (1000*667)
 
@@ -76,29 +72,25 @@ def preparation_photos(id_hotel: int) -> bool:
                     {
                         'url': url_img_with_size,
                         'id_hotel': id_hotel,
-                        'id_room': id_room,
-                        'id_image': id_photo,
                         'type': 'room'
                     }
                 )
 
         logger.info(f'thread | поток: {name}, id: {ident} | данные по фото НОМЕРОВ подготовлены')
 
-        # Многопоточная загрузка и сохранение фото (локально и в БД)
-        pool = ThreadPool(
-            processes=multiprocessing.cpu_count() * 5)  # Запускаем потоков в 5 раз больше, чем есть у нас ядер
+        # Многопоточная загрузка фото
+        with LOCK:  # Замок для сессии (во избежания ошибок при сохранении данных в БД)
+            child_pool = ThreadPool(
+                processes=multiprocessing.cpu_count() * 5)  # Запускаем потоков в 5 раз больше, чем есть у нас ядер
 
-        logger.info('thread | поток: {name}, id: {ident} | запуск многопоточной загрузки фото')
-        async_response = pool.map(save_photo, images_urls_list)  # ПРОВЕРИТЬ РЕЗУЛЬТАТ РАБОТЫ!!!
+            logger.info(f'thread | поток: {name}, id: {ident} | запуск многопоточной загрузки фото')
+            child_pool.map(create_new_photo, images_urls_list)
 
-        logger.info('async_response:', async_response)
-        print('print async_response:', async_response)  # ЧТО ДЕЛАТЬ С РЕЗУЛЬТАТОМ?
+            child_pool.close()  # Обязательно закрываем объект Pool
+            child_pool.join()
 
-        pool.close()  # Обязательно закрываем объект Pool
-        pool.join()
-
-        session.commit()  # Сохраняем записи в БД
-        logger.debug(f'db | сохранение фото в БД')
+            session.commit()  # Сохраняем записи в БД
+            logger.debug(f'db | сохранение фото в БД')
 
     else:  # Ошибка в поиске данных ответа от API по шаблону
         logger.error(f'thread | поток: {name}, id: {ident} | hotelId не найден')

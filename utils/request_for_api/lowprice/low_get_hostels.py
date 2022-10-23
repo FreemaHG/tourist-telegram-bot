@@ -13,21 +13,20 @@ from typing import List, Union
 URL = 'https://hotels4.p.rapidapi.com/properties/list'
 
 
-def get_id_hostels(id_location: int) -> Union[List[int], bool]:
+def get_hostels(id_location: int) -> Union[List, bool]:
     """ Получаем id отелей нужной локации """
 
-    hostels_id_list = []  # Для возврата id отелей
+    hostels_list = []  # Для возврата id отелей
 
-    # Проверка отелей в БД
-    hotels = check_hotels_by_id_location(id_location)
-
-    if hotels:
-        for hotel in hotels:
-            # Добавляем локацию в список для передачи пользователю для уточнения результата
-            hostels_id_list.append(hotel.id)
-
-        logger.info('возврат результатов по отелям из БД')
-        return hostels_id_list
+    # # Проверка отелей в БД
+    # hotels = check_hotels_by_id_location(id_location)
+    #
+    # if hotels:
+    #     for hotel in hotels:
+    #         hostels_id_list.append(hotel.id)
+    #
+    #     logger.info('возврат результатов по отелям из БД')
+    #     return hostels_id_list
 
     check_in_date = datetime.datetime.today().date()  # Дата заселения (сегодня)
     departure_date = check_in_date + datetime.timedelta(days=1)  # Дата выезда (сегодня + 1 день)
@@ -82,7 +81,6 @@ def get_id_hostels(id_location: int) -> Union[List[int], bool]:
                 price = hotel['ratePlan']['price']['exactCurrent']
             except KeyError as ext:
                 logger.error(f'price | данных о стоимости нет, id отеля - {id_hotel}')
-                logger.exception(ext)  # ПРОВЕРИТЬ!!!
                 price = False
 
             try:
@@ -96,7 +94,7 @@ def get_id_hostels(id_location: int) -> Union[List[int], bool]:
                 logger.error(f'address | не найден')
                 full_address = False
 
-            hostels_id_list.append(id_hotel)  # Сохраняем id отеля в список для возврата
+            hostels_list.append(id_hotel)  # Сохраняем id отеля в список для возврата (для сохранения фото)
 
             # Создаем новый отель в БД
             create_new_hotel(
@@ -111,7 +109,7 @@ def get_id_hostels(id_location: int) -> Union[List[int], bool]:
         session.commit()  # Сохраняем записи в БД
         logger.debug(f'db | сохранение отелей в БД')
 
-        return hostels_id_list
+        return hostels_list
 
     else:  # Ошибка в поиске данных ответа от API по шаблону
         logger.warning(f'проверка полученных данных API | id отелей не получены')

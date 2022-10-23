@@ -3,7 +3,7 @@ from loguru import logger
 
 
 def check_img(id_img: int) -> bool:
-    """ Проверка фото по id """
+    """ Проверка фото по id в БД """
 
     photo = session.query(Photos).filter(Photos.id == id_img).one_or_none()
 

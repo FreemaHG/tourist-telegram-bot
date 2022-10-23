@@ -36,7 +36,8 @@ class Hotels(Base):
 class Photos(Base):
     __tablename__ = 'photos'
 
-    id = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True)
+    # id_photo = Column(Integer, nullable=False)
     id_hotel = Column(Integer, ForeignKey('hotels.id'))  # Внешний ключ на id отеля
-    path = Column(String, nullable=False)
+    url = Column(String, nullable=False)
     type = Column(String(50), nullable=False)  # room / hotel

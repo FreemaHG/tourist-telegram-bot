@@ -12,6 +12,9 @@ from database.create_data.create_photos import create_new_photo  # Для сох
 ABS_PATH = os.path.abspath(os.path.join('..', '..', 'static'))  # Путь по папки static с фото
 
 
+# НЕ НУЖНО!!!
+
+# НЕ СОХРАНЯЮТСЯ ФОТО НИ В БД, НИ В STATIC!!! (ПРИ СОХРАНЕНИИ В БД ТАБЛИЦА КАЖДЫЙ РАЗ ПЕРЕЗАПИСЫВАЕТСЯ!!!)
 def save_photo(data: Dict) -> bool:
     """ Сохраняем фото в static и БД """
 
@@ -61,11 +64,11 @@ def save_photo(data: Dict) -> bool:
             logger.error(f'img | поток: {name}, id: {ident} | не удалось вычленить относительную ссылку')
             return False
 
-        create_new_photo(
-            id_img=data['id_image'],
-            id_hotel=data['id_hotel'],
-            path=img_path,
-            type_photo=data['type']
-        )
+        # create_new_photo(
+        #     id_img=data['id_image'],
+        #     id_hotel=data['id_hotel'],
+        #     path=img_path,
+        #     type_photo=data['type']
+        # )
 
     return True
