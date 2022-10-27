@@ -234,17 +234,18 @@ def response_to_the_user(message: Message):
             logger.info('Данные получены')
 
             for hotel in result:
-                print('237 hotel:', hotel)
-                # Ошибка - нужно передавать байты, а не строку!!!
+                # Указываем описание к отелю для 1 фото
                 media_group = [InputMediaPhoto(
                     hotel['photos'][0],
-                    caption=f"Отель: {hotel['hotel']}"
-                            f"Адрес: {hotel['address']}"
-                            f"Расстояние от центра: {hotel['distance_to_center']}"
-                            f"Стоимость проживания за ночь: {hotel['price']}"
+                    caption=f"*Отель:* {hotel['hotel']}\n"  # * Выделяются границы жирного текста
+                            f"*Адрес:* {hotel['address']}\n"
+                            f"*Расстояние от центра:* {hotel['distance_to_center']}\n"
+                            f"*Стоимость проживания за ночь:* {hotel['price']} руб.",
+                    parse_mode='Markdown'  # Для вывода жирного текста
                 )]
 
+                # Добавляем оставшиеся фото
                 for photo in hotel['photos'][1:]:
-                    media_group.append(photo)
+                    media_group.append(InputMediaPhoto(photo))
 
                 bot.send_media_group(message.from_user.id, media=media_group)

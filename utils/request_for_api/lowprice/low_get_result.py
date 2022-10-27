@@ -18,6 +18,7 @@ from typing import Union, List
 from utils.misc.list_divider import func_chunks_generators
 
 
+# ПРОВЕРИТЬ СОРТИРОВКУ ПО ЦЕНЕ!!!
 def get_result(id_location: int, number_of_hotels: int, number_of_photos: int = 0) -> Union[List, bool]:
     """ Получение результатов по переданным данным """
 
@@ -76,11 +77,7 @@ def get_result(id_location: int, number_of_hotels: int, number_of_photos: int = 
             preparation_photos(hotel.id)
             hotel_photos, rooms_photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
 
-        print('hotel_photos:', hotel_photos)
-        print('rooms_photos:', rooms_photos)
-
         photos = hotel_photos + rooms_photos
-        print('77 photos:', photos)
 
         # Подготавливаем нужные данные для вывода пользователю
         result_list.append(
