@@ -1,17 +1,57 @@
 # Структурировать вначале вызываемые модули, потом пакеты
-from utils.request_for_api.lowprice.low_get_location import get_id_location, city_markup
+from utils.request_for_api.get_location import city_markup
+from database.create_data.create_history import create_new_history
+from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
+import datetime, time
 
 from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
-from utils.request_for_api.lowprice.low_get_result import get_result
+from utils.request_for_api.get_result import get_result
 from loader import bot
 from loguru import logger
 
 
+# УДАЛИТЬ (ИСПОЛЬЗУЕТСЯ ДЛЯ ПРОВЕРКИ)
+COMMAND = ''
+
 @bot.message_handler(commands=['lowprice'])
 def bot_lowprice(message: Message) -> None:
     """ Запрашиваем город для поиска """
-    logger.info('Запуск сценария')
+    logger.info('Запуск сценария lowprice')
+
+    # УДАЛИТЬ (ПОДУАМТЬ КАК ПЕРЕДАВАТЬ НАЗВАНИЕ КОМАНДЫ В КОНТЕКСТЕ)
+    global COMMAND
+    COMMAND = 'lowprice'
+
+    tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))  # Конвертация даты в читабельный вид
+
+    create_new_history(
+        user_id=message.from_user.id,
+        command=message.text,
+        date_of_entry=tconv(message.date)
+    )
+
+    bot.send_message(message.from_user.id, 'Укажите город для поиска')
+    # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
+    bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
+
+
+@bot.message_handler(commands=['highprice'])
+def bot_lowprice(message: Message) -> None:
+    """ Запрашиваем город для поиска """
+    logger.info('Запуск сценария highprice')
+
+    global COMMAND
+    COMMAND = 'highprice'
+
+    tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))  # Конвертация даты в читабельный вид
+
+    create_new_history(
+        user_id=message.from_user.id,
+        command=message.text,
+        date_of_entry=tconv(message.date)
+    )
+
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
     # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
     bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
@@ -46,13 +86,12 @@ def city(message: Message):
                                  'Пожалуйста, уточните место из предложенных или введите другую локацию '
                                  '(или введите "Стоп" для остановки):',
                                   reply_markup=result_location)
-
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Название города может содержать только буквы!')
 
 
-@bot.callback_query_handler(func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: not call.data.startswith('cbcal'))
 def callback_for_city(call):
     """ Сохраняем точный id выбранной локации """
 
@@ -63,9 +102,107 @@ def callback_for_city(call):
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['city_id'] = id_location  # Сохраняем id локации
         logger.debug(f'user_id({call.from_user.id}) | данные сохранены: city_id - {id_location}')
+        # ДОБАВИТЬ ОТОБРАЖЕНИЕ ВЫБРАННОЙ ЛОКАЦИИ!!!
 
-    bot.send_message(call.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
-    bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
+    bot.send_message(call.from_user.id, f'Желаете выбрать дату заселения/выезда?')
+    bot.set_state(call.from_user.id, UserInfoForLowprice.check_date, call.message.chat.id)
+
+
+@bot.message_handler(state=UserInfoForLowprice.check_date)
+def get_check_in_date(message: Message) -> None:
+    """ Запрашиваем дату заселения """
+
+    if message.text.isalpha():
+        if message.text.lower() == 'да':
+            bot.send_message(message.from_user.id, f'Выберите дату заселения...')
+            # Создаем объект календаря - calendar и шаг - step, в котором поочередно будет выводиться год, месяц и дни
+            calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').build()
+            bot.send_message(message.from_user.id, f"Выберите год", reply_markup=calendar)
+
+        elif message.text.lower() == 'нет':
+            bot.send_message(message.from_user.id,
+                             'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
+            bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
+
+    else:
+        logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
+        bot.send_message(message.from_user.id, f'Пожалуйста, выберите "Да" или "Нет"!')
+
+
+@bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=1))
+def callback_for_check_dates(call):
+    """ Сохраняем выбор даты """
+
+    result, key, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').process(call.data)
+
+    if not result and key:
+        if LSTEP[step] == 'month':
+            bot.edit_message_text(f"Выберите месяц", call.message.chat.id, call.message.message_id,
+                                  reply_markup=key)
+        else:
+            bot.edit_message_text(f"Выберите число", call.message.chat.id, call.message.message_id,
+                                  reply_markup=key)
+    elif result:
+        if result < datetime.date.today():
+            logger.warning(f'user_id({call.from_user.id}) | не корректные данные: {result} < {datetime.date.today()}')
+            bot.edit_message_text(f"Выбранная дата не может быть раньше сегодняшней, повторите ввод",
+                                  call.message.chat.id, call.message.message_id)
+
+            calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').build()
+            bot.send_message(call.from_user.id, f"Выберите год", reply_markup=calendar)
+        else:
+            # Сохраняем введенные пользователем данные
+            with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+                data['check_in_date'] = result  # Сохраняем дату заселения
+                logger.debug(f'user_id({call.from_user.id}) | данные сохранены: check_in_date - {result}')
+                bot.edit_message_text(f"Выбрана дата заселения: {result}", call.message.chat.id,
+                                          call.message.message_id)
+
+                bot.send_message(call.message.chat.id, f'Выберите дату выселения...')
+                calendar, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').build()
+                bot.send_message(call.message.chat.id, f"Выберите год", reply_markup=calendar)
+
+
+@bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=2))
+def callback_for_check_dates(call):
+    """ Сохраняем выбор даты """
+
+    result, key, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').process(call.data)
+
+    if not result and key:
+        if LSTEP[step] == 'month':
+            bot.edit_message_text(f"Выберите месяц", call.message.chat.id, call.message.message_id,
+                                  reply_markup=key)
+        else:
+            bot.edit_message_text(f"Выберите число", call.message.chat.id, call.message.message_id,
+                                  reply_markup=key)
+    elif result:
+        with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+            if result <= data['check_in_date']:
+                logger.warning(
+                    f'user_id({call.from_user.id}) | не корректные данные: {result} < {datetime.date.today()} or '
+                    f'{result} < {data["check_in_date"]}')
+
+                bot.edit_message_text(f"Выбранная дата не может быть раньше или равна дате заселения, повторите ввод",
+                                      call.message.chat.id, call.message.message_id)
+
+                calendar, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').build()
+                bot.send_message(call.from_user.id, f"Выберите год", reply_markup=calendar)
+
+            else:
+                data['check_out_date'] = result  # Сохраняем дату выселения
+                logger.debug(f'user_id({call.from_user.id}) | данные сохранены: check_out_date - {result}')
+                bot.edit_message_text(f"Выбрана дата выселения: {result}", call.message.chat.id,
+                                      call.message.message_id)
+
+                delta = data['check_out_date'] - data['check_in_date']
+                data['count_night'] = delta.days
+                logger.debug(f'Кол-во ночей: {data["count_night"]}')
+
+                bot.send_message(call.from_user.id,
+                                 'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
+
+                bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_hotels - предыдущий шаг
@@ -112,7 +249,7 @@ def get_photos(message: Message) -> None:
         logger.info(f'user_id({message.from_user.id}) | выбрано вывод фото')
         result = True
         # Принимаем ответ и задаем новый вопрос
-        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям (от 2 до 15)?')
+        bot.send_message(message.from_user.id, 'Ок. По сколько фотографий выводить к отелям (от 2 до 10)?')
         # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
         bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_photos, message.chat.id)
 
@@ -144,14 +281,7 @@ def get_photos(message: Message) -> None:
 
         logger.info('Данные собраны, передача параметров для запроса к API')
 
-        # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
         bot.register_next_step_handler(message, response_to_the_user)
-
-        # get_result(
-        #     id_location=data["city_id"],
-        #     number_of_hotels=data["number_of_hotels"]
-        # )
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_photos - предыдущий шаг
@@ -164,10 +294,10 @@ def get_number_of_photos(message: Message) -> None:
 
         # Сохраняем введенные пользователем данные
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            if int(message.text) > 15:
+            if int(message.text) > 10:
                 logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
-                count_photos = 15
-                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во фото: 15')
+                count_photos = 10
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во фото: 10')
             elif int(message.text) < 2:
                 logger.warning(f'user_id({message.from_user.id}) | выбрано меньше допустимого значения: {message.text}')
                 count_photos = 2
@@ -194,38 +324,42 @@ def get_number_of_photos(message: Message) -> None:
 
         logger.info('Данные собраны, передача параметров для запроса к API')
 
-        # ВЫЗОВ ФУНКЦИИ ПОИСКА ВАРИАНТОВ!!!
-        # При таком варианте при повторном вызове команды ошибка - TypeError: 'NoneType' object is not callable
         bot.register_next_step_handler(message, response_to_the_user)
-
-        # get_result(
-        #     id_location=data["city_id"],
-        #     number_of_hotels=data["number_of_hotels"],
-        #     number_of_photos=data["number_of_photos"]
-        # )
 
     else:  # Если введены НЕ числа
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число')
 
 
+# СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ БЕЗ ДОП. НАЖАТИЯ КЛАВИШИ!!!
 def response_to_the_user(message: Message):
     """ Возвращаем пользователю найденные ответы """
 
     bot.send_message(message.from_user.id, 'Ищем варианты, ожидайте...')
 
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-        if data['photos'] is True:
-            result = get_result(
-                data["city_id"],
-                data["number_of_hotels"],
-                data["number_of_photos"]
-            )
-        else:
-            result = get_result(
-                data["city_id"],
-                data["number_of_hotels"]
-            )
+        try:
+            check_in_date = data['check_in_date']
+            check_out_date = data['check_out_date']
+            count_night = int(data['count_night'])
+        except KeyError:
+            check_in_date = None
+            check_out_date = None
+            count_night = None
+
+        try:
+            number_of_photos = data["number_of_photos"]
+        except KeyError:
+            number_of_photos = None
+
+        result = get_result(
+            command=COMMAND,
+            id_location=data["city_id"],
+            check_in_date=check_in_date,
+            check_out_date=check_out_date,
+            number_of_hotels=int(data["number_of_hotels"]),
+            number_of_photos=number_of_photos
+        )
 
         if result is False:
             logger.error('Данные не получены')
@@ -233,19 +367,43 @@ def response_to_the_user(message: Message):
         else:
             logger.info('Данные получены')
 
+            # Сохраняем историю запроса
+
+
             for hotel in result:
-                # Указываем описание к отелю для 1 фото
-                media_group = [InputMediaPhoto(
-                    hotel['photos'][0],
-                    caption=f"*Отель:* {hotel['hotel']}\n"  # * Выделяются границы жирного текста
-                            f"*Адрес:* {hotel['address']}\n"
-                            f"*Расстояние от центра:* {hotel['distance_to_center']}\n"
-                            f"*Стоимость проживания за ночь:* {hotel['price']} руб.",
-                    parse_mode='Markdown'  # Для вывода жирного текста
-                )]
+                data_for_hotel = f"*Отель:* {hotel['hotel']}\n" \
+                                 f"*Адрес:* {hotel['address']}\n" \
+                                 f"*Расстояние до центра:* {hotel['distance_to_center']} км\n"
 
-                # Добавляем оставшиеся фото
-                for photo in hotel['photos'][1:]:
-                    media_group.append(InputMediaPhoto(photo))
+                # ПРОВЕРИТЬ!!!  # ИТАЛИК КАК СДЕЛАТЬ!!!
+                if count_night is None:
+                    data_for_hotel += f"*Стоимость:* {hotel['price']} руб/сут\n"
 
-                bot.send_media_group(message.from_user.id, media=media_group)
+                elif count_night is not None:
+                    data_for_hotel += f"*Стоимость проживания:* \n" \
+                                      f"        за ночь - {hotel['price']} руб.\n" \
+                                      f"        с *{check_in_date.strftime('%d.%m.%Y')}* по " \
+                                      f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
+                                      f"{int(hotel['price']) * count_night} руб.\n"
+
+                # Отправка результатов с фото
+                if number_of_photos is not None:
+                    # Указываем описание к отелю для 1 фото
+                    media_group = [InputMediaPhoto(
+                        hotel['photos'][0],
+                        caption=data_for_hotel, parse_mode='Markdown'  # Для вывода жирного текста
+                    )]
+
+                    # Добавляем оставшиеся фото
+                    for photo in hotel['photos'][1:]:
+                        media_group.append(InputMediaPhoto(photo))
+
+                    bot.send_media_group(message.from_user.id, media=media_group)
+                    logger.info('Отправлены данные с фото')
+
+                # Отправка результатов без фото (ПРОВЕРИТЬ!!!)
+                else:
+                    bot.send_media_group(message.from_user.id, data_for_hotel, parse_mode='Markdown')
+                    logger.info('Отправлены данные без фото')
+
+            logger.info('Все данные по отелям успешно собраны и отправлены пользователю')

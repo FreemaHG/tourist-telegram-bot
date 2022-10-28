@@ -22,8 +22,6 @@ def preparation_photos(id_hotel: int) -> bool:
     """ Получаем и подготавливаем данные по фото по id переданного отеля """
 
     name, ident = threading.current_thread().name, threading.get_ident()  # имя и id потока
-    images_urls_list = []  # Ссылки на нужные фото
-
     response = request_to_api(url=URL, querystring={"id": id_hotel})
 
     if not response:
@@ -37,60 +35,47 @@ def preparation_photos(id_hotel: int) -> bool:
         logger.info(f'thread | поток: {name}, id: {ident} | hotelId найден')
         result = json.loads(f"{{{find.group(1)}}}")
 
-        hotel_images = result['hotelImages'][:5]  # 5 фото отеля
+        hotel_images = result['hotelImages'][:2]  # 2 фото отеля
         logger.info(f'thread | поток: {name}, id: {ident} | hotelImages найден')
 
-        room_images = result['roomImages'][:10]  # 10 номеров
+        room_images = result['roomImages'][:8]  # 8 номеров
         logger.debug(f'thread | поток: {name}, id: {ident} | roomImages найден')
 
         # Фото отеля
         for img_h in hotel_images:
             url_img = img_h['baseUrl']  # url фото из ответа API
+            id_img = img_h['imageId']  # id картинки (чтобы не повторялись в БД)
             url_img_with_size = url_img.replace('{size}', 'z')  # Задаем фото нужного размера (1000*667)
 
-            # Подготавливаем данные по фото для запроса с сайта и сохранения локально в БД
-            images_urls_list.append(
-                {
-                    'url': url_img_with_size,
-                    'id_hotel': id_hotel,
-                    'type': 'hotel'
-                }
+            create_new_photo(
+                id_photo=id_img,
+                id_hotel=id_hotel,
+                url=url_img_with_size,
+                type_photo='hotel'
             )
-
-        logger.info(f'thread | поток: {name}, id: {ident} | данные по фото ОТЕЛЯ подготовлены')
 
         # Фото комнат
         for room in room_images:
-            images = room['images'][:3]  # По 3 фото каждой комнаты
+            images = room['images'][:1]  # По 1 фото каждой комнаты
 
             for img in images:
                 url_img = img['baseUrl']
+                id_img = img['imageId']  # id картинки (чтобы не повторялись в БД)
                 url_img_with_size = url_img.replace('{size}', 'z')  # Задаем фото нужного размера (1000*667)
 
                 # Подготавливаем данные по фото для запроса с сайта и сохранения локально в БД
-                images_urls_list.append(
-                    {
-                        'url': url_img_with_size,
-                        'id_hotel': id_hotel,
-                        'type': 'room'
-                    }
+                create_new_photo(
+                    id_photo=id_img,
+                    id_hotel=id_hotel,
+                    url=url_img_with_size,
+                    type_photo='room'
                 )
 
-        logger.info(f'thread | поток: {name}, id: {ident} | данные по фото НОМЕРОВ подготовлены')
-
-        # Многопоточная загрузка фото
-        with LOCK:  # Замок для сессии (во избежания ошибок при сохранении данных в БД)
-            child_pool = ThreadPool(
-                processes=multiprocessing.cpu_count() * 5)  # Запускаем потоков в 5 раз больше, чем есть у нас ядер
-
-            logger.info(f'thread | поток: {name}, id: {ident} | запуск многопоточной загрузки фото')
-            child_pool.map(create_new_photo, images_urls_list)
-
-            child_pool.close()  # Обязательно закрываем объект Pool
-            child_pool.join()
-
-            session.commit()  # Сохраняем записи в БД
-            logger.debug(f'db | сохранение фото в БД')
+        # РЕШИТЬ ВОПРОС С ДОЛГИМ СОХРАНЕНИЕМ ФОТО
+        # ПРОБЛЕМА С ДУБЛИРУЮЩИМИСЯ ID ФОТО
+        # session.bulk_save_objects(set(objects_list))  # Сохраняем записи в БД
+        # session.commit()  # Сохраняем записи в БД
+        # logger.debug(f'db | сохранение фото в БД')
 
     else:  # Ошибка в поиске данных ответа от API по шаблону
         logger.error(f'thread | поток: {name}, id: {ident} | hotelId не найден')

@@ -1,16 +1,26 @@
 from database.create_db import Photos, session
+from database.check_data.check_image import check_img
 from loguru import logger
 from typing import Dict
+from sqlalchemy.exc import IntegrityError
 
 
-def create_new_photo(data) -> None:
+def create_new_photo(id_photo: int, id_hotel: int, url: str, type_photo: str) -> None:
     """ Создаем новую запись с фото в БД """
 
-    new_photo = Photos(
-        id_hotel=data['id_hotel'],
-        url=data['url'],
-        type=data['type']
-    )
+    # Проверка по id в БД
+    if check_img(id_photo) is False:
+        new_photo = Photos(
+            id=id_photo,
+            id_hotel=id_hotel,
+            url=url,
+            type=type_photo
+        )
 
-    session.merge(new_photo)  # Сохраняем данные (только новые) в текущей сессии
-    logger.debug(f'сохранение нового фото | id отеля: {data["id_hotel"]}, url: {data["url"]}, тип: {data["type"]}')
+        try:
+            session.add(new_photo)  # Сохраняем данные (только новые) в текущей сессии
+            session.commit()  # ОЧЕЕЕНЬ ДОЛГО СОХРАНЯЮТСЯ НОВЫЕ ФОТО!!!
+            logger.debug(f'db | сохранение фото, id: {id_photo}')
+        except IntegrityError:
+            logger.warning(f'дубликат фото | id фото: {id_photo}')
+

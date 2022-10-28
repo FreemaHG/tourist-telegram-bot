@@ -2,34 +2,33 @@ from utils.request_for_api.api_request import request_to_api
 from database.create_db import session
 from database.create_data.create_hotels import create_new_hotel   # Проверка локации в БД
 from utils.misc.save_distance_to_center import save_distance
-from database.check_data.check_hotel_for_lowprice import check_hotel, check_hotels_by_id_location  # Проверка отеля в БД
 import json
 import re
 import datetime
 from loguru import logger
 from typing import List, Union
+from datetime import date
 
 
 URL = 'https://hotels4.p.rapidapi.com/properties/list'
 
 
-def get_hostels(id_location: int) -> Union[List, bool]:
+def get_hostels(
+        id_location: int,
+        check_in_date: Union[date, None],
+        departure_date: Union[date, None]) -> Union[List, bool]:
+
     """ Получаем id отелей нужной локации """
 
     hostels_list = []  # Для возврата id отелей
 
-    # # Проверка отелей в БД
-    # hotels = check_hotels_by_id_location(id_location)
-    #
-    # if hotels:
-    #     for hotel in hotels:
-    #         hostels_id_list.append(hotel.id)
-    #
-    #     logger.info('возврат результатов по отелям из БД')
-    #     return hostels_id_list
-
-    check_in_date = datetime.datetime.today().date()  # Дата заселения (сегодня)
-    departure_date = check_in_date + datetime.timedelta(days=1)  # Дата выезда (сегодня + 1 день)
+    if check_in_date is None or departure_date is None:
+        logger.warning(f'check_in_date и departure_date не заданы, будут выбраны значения по-умолчанию')
+        check_in_date = datetime.datetime.today().date()  # Дата заселения (сегодня)
+        departure_date = check_in_date + datetime.timedelta(days=1)  # Дата выезда (сегодня + 1 день)
+    else:
+        check_in_date.strftime("%Y-%m-%d")  # Преобразуем в правильный формат для передачи в API
+        departure_date.strftime("%Y-%m-%d")
 
     params = {
         "destinationId": id_location,
@@ -74,12 +73,11 @@ def get_hostels(id_location: int) -> Union[List, bool]:
                 distance_to_center = save_distance(distance_data)  # Сохраняем расстояние до центра
             except KeyError as ext:
                 logger.error(f'landmarks | данных по расстоянию до центра города нет. {ext}')
-                logger.exception(ext)  # ПРОВЕРИТЬ!!!
                 distance_to_center = False
 
             try:
-                price = hotel['ratePlan']['price']['exactCurrent']
-            except KeyError as ext:
+                price = int(hotel['ratePlan']['price']['exactCurrent'])
+            except KeyError:
                 logger.error(f'price | данных о стоимости нет, id отеля - {id_hotel}')
                 price = False
 
@@ -90,7 +88,7 @@ def get_hostels(id_location: int) -> Union[List, bool]:
 
                 full_address = ', '.join([address, locality, region])
                 logger.info(f'address | успешно сохранен')
-            except KeyError as ext:
+            except KeyError:
                 logger.error(f'address | не найден')
                 full_address = False
 

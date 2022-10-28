@@ -1,6 +1,5 @@
-from . import lowprice
-from . import highprice
+from . import lowprice_and_highprice
 from . import bestdeal
 from . import history
 
-__all__ = ['lowprice', 'highprice', 'bestdeal', 'history']  # Либо такая запись
+__all__ = ['lowprice_and_highprice', 'bestdeal', 'history']  # Либо такая запись

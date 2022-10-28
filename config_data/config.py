@@ -9,9 +9,10 @@ else:
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')  # Импортируем токен из переменных окружения (хранятся в .env)
 RAPID_API_KEY = os.getenv('RAPID_API_KEY')
+
 DEFAULT_COMMANDS = (
     ('start', "Запустить бота"),
-    ('help', "Вывести справку"),
+    ('help', "Вывести справку")
 )
 
 CUSTOM_COMMANDS = (

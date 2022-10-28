@@ -2,9 +2,10 @@ from database.create_db import Photos, session
 from loguru import logger
 from sqlalchemy import and_
 from itertools import chain
+from typing import Union, List, Tuple
 
 
-def get_photos_of_hotel(id_hotel: int, number_of_photos: int):
+def get_photos_of_hotel(id_hotel: int, number_of_photos: int) -> Union[List, Tuple[List, List]]:
     """ Получаем фото отеля из БД """
 
     logger.info(f'поиск фото для отеля {id_hotel}')
@@ -27,7 +28,7 @@ def get_photos_of_hotel(id_hotel: int, number_of_photos: int):
     if number_of_photos == 2:
         return photo_of_hotel[:1], photo_of_rooms[:1]
 
-    elif 3 < number_of_photos < 6:
+    elif 2 < number_of_photos < 6:
         return photo_of_hotel[:2], photo_of_rooms[:3]
 
     else:
