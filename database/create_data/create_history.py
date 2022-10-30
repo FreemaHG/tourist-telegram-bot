@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 # ДОПОЛНИТЬ СОХРАНЕНИЕМ НАЙДЕННЫХ ОТЕЛЕЙ
-def create_new_history(user_id: int, command: str, date_of_entry: datetime):
+def create_new_history(user_id: int, command: str, date_of_entry: str):
     """ Сохраняем историю запроса пользователя """
 
     new_history = History(

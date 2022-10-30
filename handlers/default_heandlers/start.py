@@ -1,7 +1,5 @@
 from telebot.types import Message
 from loader import bot
-from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
-import datetime
 
 
 @bot.message_handler(commands=['start'])

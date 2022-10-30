@@ -1,8 +1,10 @@
 # Структурировать вначале вызываемые модули, потом пакеты
 from utils.request_for_api.get_location import city_markup
 from database.create_data.create_history import create_new_history
+from . import bestdeal  # Для доп.вопросов для команды bestdeal
 from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
-import datetime, time
+import datetime
+import time
 
 from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
 from states.data_for_lowprice import UserInfoForLowprice
@@ -14,42 +16,24 @@ from loguru import logger
 # УДАЛИТЬ (ИСПОЛЬЗУЕТСЯ ДЛЯ ПРОВЕРКИ)
 COMMAND = ''
 
-@bot.message_handler(commands=['lowprice'])
+
+@bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
 def bot_lowprice(message: Message) -> None:
     """ Запрашиваем город для поиска """
-    logger.info('Запуск сценария lowprice')
 
     # УДАЛИТЬ (ПОДУАМТЬ КАК ПЕРЕДАВАТЬ НАЗВАНИЕ КОМАНДЫ В КОНТЕКСТЕ)
     global COMMAND
-    COMMAND = 'lowprice'
+    COMMAND = message.text  # Выполняемая команда
+    timestamp_data_start = message.date  # Время выполнения команды в формате timestamp
+
+    logger.info(f'Запуск сценария {COMMAND}')
 
     tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))  # Конвертация даты в читабельный вид
 
     create_new_history(
         user_id=message.from_user.id,
-        command=message.text,
-        date_of_entry=tconv(message.date)
-    )
-
-    bot.send_message(message.from_user.id, 'Укажите город для поиска')
-    # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
-    bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
-
-
-@bot.message_handler(commands=['highprice'])
-def bot_lowprice(message: Message) -> None:
-    """ Запрашиваем город для поиска """
-    logger.info('Запуск сценария highprice')
-
-    global COMMAND
-    COMMAND = 'highprice'
-
-    tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))  # Конвертация даты в читабельный вид
-
-    create_new_history(
-        user_id=message.from_user.id,
-        command=message.text,
-        date_of_entry=tconv(message.date)
+        command=COMMAND,
+        date_of_entry=tconv(timestamp_data_start)
     )
 
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
@@ -110,7 +94,7 @@ def callback_for_city(call):
 
 @bot.message_handler(state=UserInfoForLowprice.check_date)
 def get_check_in_date(message: Message) -> None:
-    """ Запрашиваем дату заселения """
+    """ Запрашиваем дату заселения """  # Изменить
 
     if message.text.isalpha():
         if message.text.lower() == 'да':
@@ -120,9 +104,17 @@ def get_check_in_date(message: Message) -> None:
             bot.send_message(message.from_user.id, f"Выберите год", reply_markup=calendar)
 
         elif message.text.lower() == 'нет':
-            bot.send_message(message.from_user.id,
-                             'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
-            bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
+
+            # Доп.вопросы для команды bestdeal
+            if COMMAND == '/bestdeal':
+                bot.send_message(message.from_user.id, f'Укажите диапазон цен')
+                bot.send_message(message.from_user.id, f'Минимальная цена (в руб.)')
+                bot.set_state(message.from_user.id, UserInfoForLowprice.min_price, message.chat.id)
+
+            else:
+                bot.send_message(message.from_user.id,
+                                 'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
+                bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
 
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
@@ -131,7 +123,7 @@ def get_check_in_date(message: Message) -> None:
 
 @bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=1))
 def callback_for_check_dates(call):
-    """ Сохраняем выбор даты """
+    """ Сохраняем выбор даты заселения """
 
     result, key, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').process(call.data)
 
@@ -165,7 +157,7 @@ def callback_for_check_dates(call):
 
 @bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=2))
 def callback_for_check_dates(call):
-    """ Сохраняем выбор даты """
+    """ Сохраняем выбор даты выселения """
 
     result, key, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').process(call.data)
 
@@ -199,10 +191,16 @@ def callback_for_check_dates(call):
                 data['count_night'] = delta.days
                 logger.debug(f'Кол-во ночей: {data["count_night"]}')
 
-                bot.send_message(call.from_user.id,
-                                 'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
+                # Доп.вопросы для команды bestdeal
+                if COMMAND == '/bestdeal':
+                    bot.send_message(call.from_user.id, f'Укажите диапазон цен')
+                    bot.set_state(call.from_user.id, UserInfoForLowprice.min_price, call.message.chat.id)
 
-                bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
+                else:
+                    bot.send_message(call.from_user.id,
+                                     'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
+
+                    bot.set_state(call.from_user.id, UserInfoForLowprice.number_of_hotels, call.message.chat.id)
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_hotels - предыдущий шаг
@@ -343,20 +341,33 @@ def response_to_the_user(message: Message):
             check_out_date = data['check_out_date']
             count_night = int(data['count_night'])
         except KeyError:
-            check_in_date = None
-            check_out_date = None
-            count_night = None
+            logger.warning('check_in_date, check_out_date, count_night отсутствуют')
+            check_in_date, check_out_date, count_night = None, None, None
 
         try:
             number_of_photos = data["number_of_photos"]
         except KeyError:
+            logger.warning('number_of_photos отсутствует')
             number_of_photos = None
+
+        try:
+            min_price = data['min_price']
+            max_price = data['max_price']
+            min_distance_to_center = data['min_distance_to_center']
+            max_distance_to_center = data['max_distance_to_center']
+        except KeyError:
+            logger.warning('Диапазоны цен и расстояний отсутствуют')
+            min_price, max_price, min_distance_to_center, max_distance_to_center = None, None, None, None
 
         result = get_result(
             command=COMMAND,
-            id_location=data["city_id"],
+            id_location=int(data["city_id"]),
             check_in_date=check_in_date,
             check_out_date=check_out_date,
+            min_price=min_price,
+            max_price=max_price,
+            min_distance_to_center=min_distance_to_center,
+            max_distance_to_center=max_distance_to_center,
             number_of_hotels=int(data["number_of_hotels"]),
             number_of_photos=number_of_photos
         )
@@ -366,6 +377,10 @@ def response_to_the_user(message: Message):
             bot.send_message(message.from_user.id, 'К сожалению, API не отвечает...')
         else:
             logger.info('Данные получены')
+
+            if COMMAND == '/bestdeal':
+                bot.send_message(message.from_user.id, 'Лучшие предложения по цене и расстоянию до центра '
+                                                       '(цена в приоритете)')
 
             # Сохраняем историю запроса
 
@@ -401,9 +416,8 @@ def response_to_the_user(message: Message):
                     bot.send_media_group(message.from_user.id, media=media_group)
                     logger.info('Отправлены данные с фото')
 
-                # Отправка результатов без фото (ПРОВЕРИТЬ!!!)
                 else:
-                    bot.send_media_group(message.from_user.id, data_for_hotel, parse_mode='Markdown')
+                    bot.send_message(message.from_user.id, data_for_hotel, parse_mode='Markdown')
                     logger.info('Отправлены данные без фото')
 
             logger.info('Все данные по отелям успешно собраны и отправлены пользователю')

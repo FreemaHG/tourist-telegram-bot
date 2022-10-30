@@ -56,7 +56,8 @@ def preparation_photos(id_hotel: int) -> bool:
 
         # Фото комнат
         for room in room_images:
-            images = room['images'][:1]  # По 1 фото каждой комнаты
+            images = room['images'][:3]  # По 3 фото каждой комнаты (с запасом на случай, если кол-во номеров
+                                         # будет малым и кол-во фото будет не хватать)
 
             for img in images:
                 url_img = img['baseUrl']
