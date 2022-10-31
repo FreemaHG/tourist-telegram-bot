@@ -110,9 +110,10 @@ def get_result(
         else:
             photos = None
 
-        # Подготавливаем нужные данные для вывода пользователю
+        # Подготавливаем нужные данные для вывода пользователю (ВОЗМОЖНО ПЕРЕДЕЛАТЬ ФОРМАТ - ВОЗВРАЩАТЬ ТОЛЬКО ОБЪЕКТ!)
         result_list.append(
             {
+                'object': hotel,
                 'id': hotel.id,
                 'hotel': hotel.name,
                 'address': hotel.address,

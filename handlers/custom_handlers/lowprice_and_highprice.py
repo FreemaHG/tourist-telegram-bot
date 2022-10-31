@@ -1,7 +1,10 @@
 # Структурировать вначале вызываемые модули, потом пакеты
+from database.create_db import Association
+
 from utils.request_for_api.get_location import city_markup
 from database.create_data.create_history import create_new_history
 from . import bestdeal  # Для доп.вопросов для команды bestdeal
+from database.create_db import History, session
 from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 import datetime
 import time
@@ -15,6 +18,7 @@ from loguru import logger
 
 # УДАЛИТЬ (ИСПОЛЬЗУЕТСЯ ДЛЯ ПРОВЕРКИ)
 COMMAND = ''
+TIMESTAMP_DATA_START = ''
 
 
 @bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
@@ -22,19 +26,11 @@ def bot_lowprice(message: Message) -> None:
     """ Запрашиваем город для поиска """
 
     # УДАЛИТЬ (ПОДУАМТЬ КАК ПЕРЕДАВАТЬ НАЗВАНИЕ КОМАНДЫ В КОНТЕКСТЕ)
-    global COMMAND
+    global COMMAND, TIMESTAMP_DATA_START
     COMMAND = message.text  # Выполняемая команда
-    timestamp_data_start = message.date  # Время выполнения команды в формате timestamp
+    TIMESTAMP_DATA_START = message.date  # Время выполнения команды в формате timestamp
 
     logger.info(f'Запуск сценария {COMMAND}')
-
-    tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))  # Конвертация даты в читабельный вид
-
-    create_new_history(
-        user_id=message.from_user.id,
-        command=COMMAND,
-        date_of_entry=tconv(timestamp_data_start)
-    )
 
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
     # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
@@ -147,8 +143,8 @@ def callback_for_check_dates(call):
             with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
                 data['check_in_date'] = result  # Сохраняем дату заселения
                 logger.debug(f'user_id({call.from_user.id}) | данные сохранены: check_in_date - {result}')
-                bot.edit_message_text(f"Выбрана дата заселения: {result}", call.message.chat.id,
-                                          call.message.message_id)
+                bot.edit_message_text(f"Выбрана дата заселения: *{result.strftime('%d.%m.%y')}*", call.message.chat.id,
+                                          call.message.message_id, parse_mode='Markdown')
 
                 bot.send_message(call.message.chat.id, f'Выберите дату выселения...')
                 calendar, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').build()
@@ -184,8 +180,8 @@ def callback_for_check_dates(call):
             else:
                 data['check_out_date'] = result  # Сохраняем дату выселения
                 logger.debug(f'user_id({call.from_user.id}) | данные сохранены: check_out_date - {result}')
-                bot.edit_message_text(f"Выбрана дата выселения: {result}", call.message.chat.id,
-                                      call.message.message_id)
+                bot.edit_message_text(f"Выбрана дата выселения: *{result.strftime('%d.%m.%y')}*", call.message.chat.id,
+                                      call.message.message_id, parse_mode='Markdown')
 
                 delta = data['check_out_date'] - data['check_in_date']
                 data['count_night'] = delta.days
@@ -382,15 +378,22 @@ def response_to_the_user(message: Message):
                 bot.send_message(message.from_user.id, 'Лучшие предложения по цене и расстоянию до центра '
                                                        '(цена в приоритете)')
 
-            # Сохраняем историю запроса
-
+            new_history = create_new_history(
+                user_id=message.from_user.id,
+                command=COMMAND,
+                date_of_entry=datetime.datetime.fromtimestamp(float(TIMESTAMP_DATA_START))
+            )
 
             for hotel in result:
+                # Сохраняем историю запросов
+                new_record = Association()
+                new_record.hotel = hotel['object']
+                new_history.hotels.append(new_record)  # Добавляем отель в историю
+
                 data_for_hotel = f"*Отель:* {hotel['hotel']}\n" \
                                  f"*Адрес:* {hotel['address']}\n" \
                                  f"*Расстояние до центра:* {hotel['distance_to_center']} км\n"
 
-                # ПРОВЕРИТЬ!!!  # ИТАЛИК КАК СДЕЛАТЬ!!!
                 if count_night is None:
                     data_for_hotel += f"*Стоимость:* {hotel['price']} руб/сут\n"
 
@@ -401,6 +404,9 @@ def response_to_the_user(message: Message):
                                       f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
                                       f"{int(hotel['price']) * count_night} руб.\n"
 
+                data_for_hotel += f"*Ссылка на отель:* \n" \
+                                  f"        https://www.hotels.com/ho{hotel['id']}\n"
+
                 # Отправка результатов с фото
                 if number_of_photos is not None:
                     # Указываем описание к отелю для 1 фото
@@ -410,7 +416,7 @@ def response_to_the_user(message: Message):
                     )]
 
                     # Добавляем оставшиеся фото
-                    for photo in hotel['photos'][1:]:
+                    for photo in hotel['photos'][1:11]:  # До 10 медиафайлов в одном сообщении
                         media_group.append(InputMediaPhoto(photo))
 
                     bot.send_media_group(message.from_user.id, media=media_group)
@@ -419,5 +425,11 @@ def response_to_the_user(message: Message):
                 else:
                     bot.send_message(message.from_user.id, data_for_hotel, parse_mode='Markdown')
                     logger.info('Отправлены данные без фото')
+
+            session.add(new_history)
+            session.commit()
+            logger.debug('id всех отелей успешно добавлены в историю')
+
+            bot.delete_state(message.from_user.id, message.chat.id)  # Удаляем состояние (для запуска новых команд)
 
             logger.info('Все данные по отелям успешно собраны и отправлены пользователю')

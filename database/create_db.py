@@ -31,6 +31,7 @@ class Hotels(Base):
     price = Column(Integer, nullable=True)
 
     photos = relationship('Photos', backref='hotels')  # Связь с таблицей "Photos"
+    history = relationship("Association", back_populates='hotel')
 
 
 class Photos(Base):
@@ -42,13 +43,21 @@ class Photos(Base):
     type = Column(String(50), nullable=False)  # room / hotel
 
 
+# ПРОВЕРИТЬ НАСТРОЙКУ ТАБЛИЦ
 class History(Base):
     __tablename__ = 'history'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
     command = Column(String(100), nullable=False)
-    date_of_entry = Column(String(150), nullable=False)
-    # Сделать вспомогательную таблицу с отношением Многие ко многим
-    # hotels =
+    date_of_entry = Column(DateTime, nullable=False)
+    hotels = relationship("Association", back_populates='history')
 
+
+class Association(Base):
+    __tablename__ = "association_table"
+
+    hotel_id = Column(ForeignKey("hotels.id"), primary_key=True)
+    history_id = Column(ForeignKey("history.id"), primary_key=True)
+    hotel = relationship("Hotels", back_populates="history")
+    history = relationship("History", back_populates="hotels")
