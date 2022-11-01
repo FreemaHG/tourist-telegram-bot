@@ -1,13 +1,13 @@
-from utils.request_for_api.api_request import request_to_api
 from database.create_db import session
-from database.create_data.create_hotels import create_new_hotel   # Проверка локации в БД
+from database.create_data.create_hotels import create_new_hotel
+from utils.request_for_api.api_request import request_to_api
 from utils.misc.save_distance_to_center import save_distance
 import json
 import re
 import datetime
 from loguru import logger
-from typing import List, Union
 from datetime import date
+from typing import List, Union
 
 
 URL = 'https://hotels4.p.rapidapi.com/properties/list'
@@ -18,14 +18,14 @@ def get_hostels(
         check_in_date: Union[date, None],
         departure_date: Union[date, None]) -> Union[List, bool]:
 
-    """ Получаем id отелей нужной локации """
+    """ Получаем id отелей по переданной id локации """
 
     hostels_list = []  # Для возврата id отелей
 
     if check_in_date is None or departure_date is None:
         logger.warning(f'check_in_date и departure_date не заданы, будут выбраны значения по-умолчанию')
-        check_in_date = datetime.datetime.today().date()  # Дата заселения (сегодня)
-        departure_date = check_in_date + datetime.timedelta(days=1)  # Дата выезда (сегодня + 1 день)
+        check_in_date = datetime.datetime.today().date()  # Дата заселения (текущая)
+        departure_date = check_in_date + datetime.timedelta(days=1)  # Дата выезда (текущая + 1 день)
     else:
         check_in_date.strftime("%Y-%m-%d")  # Преобразуем в правильный формат для передачи в API
         departure_date.strftime("%Y-%m-%d")
@@ -42,16 +42,15 @@ def get_hostels(
         "currency": "RUB"  # Вывод стоимости проживания в рублях
     }
 
-    # Выполняем запрос к API
-    response = request_to_api(url=URL, querystring=params)
+    response = request_to_api(url=URL, querystring=params)  # Выполняем запрос к API
 
     if response is False:
         logger.error('отели от API не получены')
         return False
 
     # Проверка шаблоном перед извлечением ключа
-    pattern = r'("results":.*),"pagination"'  # Возможно этот шаблон при использовании API
-    # pattern = r'(?<=,)"results":.+?(?=,"pagination)'  # Из примера (ПРОВЕРИТЬ!!!)
+    pattern = r'("results":.*),"pagination"'  # Шаблон для извлечения нужных данных из ответа от API
+    # pattern = r'(?<=,)"results":.+?(?=,"pagination)'  # Шаблон из примера
     find = re.search(pattern, response.text)
 
     if find:

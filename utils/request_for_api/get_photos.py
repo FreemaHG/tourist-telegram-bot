@@ -1,18 +1,11 @@
+from database.create_data.create_photos import create_new_photo
+from utils.request_for_api.api_request import request_to_api
 import threading
 from threading import Lock
-
-from utils.request_for_api.api_request import request_to_api
-from utils.misc.save_photos import save_photo  # Для сохранения img в static
-from database.create_db import session
-from database.create_data.create_photos import create_new_photo
-
 import re
 from loguru import logger
 import json
-import requests
 
-from multiprocessing.pool import ThreadPool
-import multiprocessing
 
 LOCK = Lock()
 URL = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
@@ -29,7 +22,7 @@ def preparation_photos(id_hotel: int) -> bool:
         return False
 
     # Проверка шаблоном перед извлечением ключа
-    pattern = r'("hotelId":\d*,.*),"featuredImageTrackingDetails"'  # Проверить!!!
+    pattern = r'("hotelId":\d*,.*),"featuredImageTrackingDetails"'
     find = re.search(pattern, response.text)
     if find:
         logger.info(f'thread | поток: {name}, id: {ident} | hotelId найден')
@@ -71,12 +64,6 @@ def preparation_photos(id_hotel: int) -> bool:
                     url=url_img_with_size,
                     type_photo='room'
                 )
-
-        # РЕШИТЬ ВОПРОС С ДОЛГИМ СОХРАНЕНИЕМ ФОТО
-        # ПРОБЛЕМА С ДУБЛИРУЮЩИМИСЯ ID ФОТО
-        # session.bulk_save_objects(set(objects_list))  # Сохраняем записи в БД
-        # session.commit()  # Сохраняем записи в БД
-        # logger.debug(f'db | сохранение фото в БД')
 
     else:  # Ошибка в поиске данных ответа от API по шаблону
         logger.error(f'thread | поток: {name}, id: {ident} | hotelId не найден')

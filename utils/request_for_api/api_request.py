@@ -1,11 +1,9 @@
-import time
-
 from config_data.config import RAPID_API_KEY
-import requests
+import time
 from requests import get
+import requests
 import json
 from loguru import logger
-from typing import Union
 
 
 HEADERS = {
@@ -15,7 +13,7 @@ HEADERS = {
 
 
 def request_to_api(url, querystring, count: int = 0) -> json:
-    """ Запрос к API """
+    """ Запрос к API по переданному url и параметрам """
 
     if count > 3:
         logger.error(f'API | превышено максимальное кол-во запросов | url: {url}, параметры: {querystring}')
@@ -36,5 +34,5 @@ def request_to_api(url, querystring, count: int = 0) -> json:
             return response
 
     except requests.exceptions.Timeout:  # Обработка долгого соединения
-        logger.error(f'запрос к API | НЕУДАЧА!')
+        logger.error(f'запрос к API | превышено время ожидания ответа!')
         return False

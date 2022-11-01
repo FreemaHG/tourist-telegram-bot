@@ -51,9 +51,8 @@ def check_hotels_by_id_location(
     return hotels
 
 
-# Используется ли!?
 def check_hotel(id_hotel: int) -> Union[int, bool]:
-    """ Проверка отеля в БД """
+    """ Проверка отеля в БД по переданному id """
 
     hotel = session.query(Hotels).filter(Hotels.id == id_hotel).one_or_none()
 

@@ -15,5 +15,3 @@ def create_new_location(id_location: int, name_location: str, location: str):
     logger.debug(
         f'db | сохранение данных в сессии: id - {id_location}, локация: {name_location}, адрес: {location}'
     )
-
-

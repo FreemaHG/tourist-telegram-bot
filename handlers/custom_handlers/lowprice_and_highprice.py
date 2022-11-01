@@ -1,19 +1,15 @@
-# Структурировать вначале вызываемые модули, потом пакеты
 from database.create_db import Association
-
-from utils.request_for_api.get_location import city_markup
 from database.create_data.create_history import create_new_history
-from . import bestdeal  # Для доп.вопросов для команды bestdeal
 from database.create_db import History, session
-from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
-import datetime
-import time
-
-from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
-from states.data_for_lowprice import UserInfoForLowprice
+from utils.request_for_api.get_location import city_markup
 from utils.request_for_api.get_result import get_result
+from states.data_for_lowprice import UserInfoForLowprice
+from . import bestdeal  # Для доп.вопросов для команды bestdeal
 from loader import bot
+from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
+from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
 from loguru import logger
+import datetime
 
 
 # УДАЛИТЬ (ИСПОЛЬЗУЕТСЯ ДЛЯ ПРОВЕРКИ)
@@ -33,6 +29,12 @@ def bot_lowprice(message: Message) -> None:
     logger.info(f'Запуск сценария {COMMAND}')
 
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
+
+    # Как сохранить название команды и время ввода команды в текущей функции? Ошибка KeyError
+    # with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    #     data['command'] = COMMAND
+    #     data['timestamp_data_start'] = TIMESTAMP_DATA_START
+
     # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
     bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
 
@@ -213,11 +215,11 @@ def get_number_of_hotels(message: Message) -> None:
             if int(message.text) > 15:
                 logger.warning(f'user_id({message.from_user.id}) | выбрано больше допустимого значения: {message.text}')
                 count_hotels = 15
-                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во отелей: 10')
+                bot.send_message(message.from_user.id, 'Будет выведено максимально допустимое кол-во отелей: 15')
             else:
                 count_hotels = message.text
 
-            data['number_of_hotels'] = count_hotels  # Сохраняем введенное пользователем число (не больше 25)
+            data['number_of_hotels'] = count_hotels  # Сохраняем введенное пользователем число (не больше 15)
 
         logger.debug(f'user_id({message.from_user.id}) | данные сохранены: number_of_hotels - {count_hotels}')
 
@@ -228,7 +230,7 @@ def get_number_of_hotels(message: Message) -> None:
         bot.set_state(message.from_user.id, UserInfoForLowprice.photos, message.chat.id)
 
     else:  # Если введены НЕ числа
-        bot.send_message(message.from_user.id, 'Пожалуйста, введите число (не более 25!)')
+        bot.send_message(message.from_user.id, 'Пожалуйста, введите число (не более 15!)')
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
 
 
@@ -262,19 +264,10 @@ def get_photos(message: Message) -> None:
             data['photos'] = result  # Сохраняем булевое значение (выводить или не выводить фото к отелям)
             logger.debug(f'user_id({message.from_user.id}) | данные сохранены: photos - {message.text}')
 
-    # УДАЛИТЬ ПОСЛЕ
     if result is False:
-        main_text = f'Будет произведен поиск по следующим данным: \n' \
-                    f' - Город: {data["location_name"]}\n' \
-                    f' - id локации: {data["city_id"]}\n' \
-                    f' - Кол-во отелей: {data["number_of_hotels"]}\n' \
-                    f' - Выводить фото: нет'
-
-        bot.send_message(message.from_user.id, main_text)
+        # СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ СРАЗУ (БЕЗ НАЖАТИЯ ДОП.КНОПКИ)
         bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
-
         logger.info('Данные собраны, передача параметров для запроса к API')
-
         bot.register_next_step_handler(message, response_to_the_user)
 
 
@@ -305,19 +298,9 @@ def get_number_of_photos(message: Message) -> None:
 
         bot.send_message(message.from_user.id, 'Все понял, сейчас поищу варианты...')
 
-        # УДАЛИТЬ ПОСЛЕ
-        main_text = f'Будет произведен поиск по следующим данным: \n' \
-                    f' - Город: {data["location_name"]}\n' \
-                    f' - id локации: {data["city_id"]}\n' \
-                    f' - Кол-во отелей: {data["number_of_hotels"]}\n' \
-                    f' - Выводить фото: да\n' \
-                    f' - Кол-во выводимых фото: {data["number_of_photos"]}'
-
-        bot.send_message(message.from_user.id, main_text)
+        # # СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ СРАЗУ (БЕЗ НАЖАТИЯ ДОП.КНОПКИ)
         bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
-
         logger.info('Данные собраны, передача параметров для запроса к API')
-
         bot.register_next_step_handler(message, response_to_the_user)
 
     else:  # Если введены НЕ числа
@@ -384,28 +367,26 @@ def response_to_the_user(message: Message):
                 date_of_entry=datetime.datetime.fromtimestamp(float(TIMESTAMP_DATA_START))
             )
 
+            # Обновить с учетом измененного вывода функции get_result
             for hotel in result:
                 # Сохраняем историю запросов
                 new_record = Association()
                 new_record.hotel = hotel['object']
                 new_history.hotels.append(new_record)  # Добавляем отель в историю
 
-                data_for_hotel = f"*Отель:* {hotel['hotel']}\n" \
-                                 f"*Адрес:* {hotel['address']}\n" \
-                                 f"*Расстояние до центра:* {hotel['distance_to_center']} км\n"
+                data_for_hotel = f"*Отель:* [{hotel['object'].name}](https://www.hotels.com/ho{hotel['object'].id})\n" \
+                                 f"*Адрес:* {hotel['object'].address}\n" \
+                                 f"*Расстояние до центра:* {hotel['object'].distance_to_center} км\n"
 
                 if count_night is None:
-                    data_for_hotel += f"*Стоимость:* {hotel['price']} руб/сут\n"
+                    data_for_hotel += f"*Стоимость:* {hotel['object'].price} руб/сут\n"
 
                 elif count_night is not None:
                     data_for_hotel += f"*Стоимость проживания:* \n" \
-                                      f"        за ночь - {hotel['price']} руб.\n" \
+                                      f"        за ночь - {hotel['object'].price} руб.\n" \
                                       f"        с *{check_in_date.strftime('%d.%m.%Y')}* по " \
                                       f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
-                                      f"{int(hotel['price']) * count_night} руб.\n"
-
-                data_for_hotel += f"*Ссылка на отель:* \n" \
-                                  f"        https://www.hotels.com/ho{hotel['id']}\n"
+                                      f"{int(hotel['object'].price) * count_night} руб.\n"
 
                 # Отправка результатов с фото
                 if number_of_photos is not None:
@@ -416,7 +397,7 @@ def response_to_the_user(message: Message):
                     )]
 
                     # Добавляем оставшиеся фото
-                    for photo in hotel['photos'][1:11]:  # До 10 медиафайлов в одном сообщении
+                    for photo in hotel['photos'][1:10]:  # До 10 медиафайлов в одном сообщении
                         media_group.append(InputMediaPhoto(photo))
 
                     bot.send_media_group(message.from_user.id, media=media_group)
@@ -430,6 +411,6 @@ def response_to_the_user(message: Message):
             session.commit()
             logger.debug('id всех отелей успешно добавлены в историю')
 
-            bot.delete_state(message.from_user.id, message.chat.id)  # Удаляем состояние (для запуска новых команд)
-
             logger.info('Все данные по отелям успешно собраны и отправлены пользователю')
+
+    bot.delete_state(message.from_user.id, message.chat.id)  # Удаляем состояние (для запуска новых команд)

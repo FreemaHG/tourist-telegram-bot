@@ -5,6 +5,8 @@ from loader import bot
 
 @bot.message_handler(commands=['help'])
 def bot_help(message: Message):
+    """ Вывод команд для пользователя """
+
     default_commands = [f'/{command} - {desk}' for command, desk in DEFAULT_COMMANDS]
     custom_commands = [f'/{command} - {desk}' for command, desk in CUSTOM_COMMANDS]
     all_commands = default_commands + custom_commands

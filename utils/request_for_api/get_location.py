@@ -1,10 +1,9 @@
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-from utils.request_for_api.api_request import request_to_api
 from database.create_db import session
-from database.check_data.check_location_for_lowprice import check_location  # Проверка локации в БД
-from database.create_data.create_location import create_new_location  # Проверка локации в БД
+from database.check_data.check_location_for_lowprice import check_location
+from database.create_data.create_location import create_new_location
+from utils.request_for_api.api_request import request_to_api
 from utils.misc.address_conversion import func_address_conversion
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import json
 import re
 from loguru import logger
@@ -15,7 +14,7 @@ URL = 'https://hotels4.p.rapidapi.com/locations/v2/search'
 
 
 def get_id_location(city: str) -> Union[List[dict[str, Union[str, Any]]], bool]:
-    """ Получаем id локаций """
+    """ Получаем id локаций по переданному названию """
 
     location_id_list = []  # Список для вывода результатов
 
@@ -90,6 +89,7 @@ def get_id_location(city: str) -> Union[List[dict[str, Union[str, Any]]], bool]:
 
 def city_markup(city_name: str) -> Union[InlineKeyboardMarkup, bool]:
     """ Возвращает варианты локаций для уточнения пользователем """
+
     cities = get_id_location(city_name)  # Делаем запрос к API, получаем список с id и адресами локаций
 
     if not cities:
@@ -98,8 +98,7 @@ def city_markup(city_name: str) -> Union[InlineKeyboardMarkup, bool]:
     destinations = InlineKeyboardMarkup()  # Создаем клавиатуру
     for city in cities:
         # Добавляем в клавиатуру кнопку с данными по локации
-        destinations.add(InlineKeyboardButton(text=city["location"],
-                          callback_data=f'{city["id"]}'))
+        destinations.add(InlineKeyboardButton(text=city["location"], callback_data=f'{city["id"]}'))
 
     logger.info('возврат клавиатуры с локациями для уточнения дальнейшего поиска')
     return destinations

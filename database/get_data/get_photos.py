@@ -24,12 +24,12 @@ def get_photos_of_hotel(id_hotel: int, number_of_photos: int) -> Union[List, Tup
         logger.warning(f'db поиск фото | id отеля: {id_hotel}, фото номеров не найдено')
         photo_of_rooms = []
 
-    # В зависимости от выбранного кол-ва фото пользователем корректируем выдачу
+    # В зависимости от выбранного кол-ва фото пользователем корректируем соотношение и кол-во возвращаемых картинок
     if number_of_photos == 2:
-        return photo_of_hotel[0], photo_of_rooms[0]
+        return photo_of_hotel[:1] + photo_of_rooms[:1]
 
     elif 2 < number_of_photos < 6:
-        return photo_of_hotel[:2], photo_of_rooms[:number_of_photos - 2]
+        return photo_of_hotel[:2] + photo_of_rooms[:number_of_photos - 2]
 
     else:
-        return photo_of_hotel[:3], photo_of_rooms[:number_of_photos - 3]  # До 10 фото в одном сообщении
+        return photo_of_hotel[:3] + photo_of_rooms[:8]  # макс. 10 фото

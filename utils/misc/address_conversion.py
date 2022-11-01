@@ -15,5 +15,5 @@ def func_address_conversion(string: str) -> Union[str, bool]:
         return result
 
     except TypeError as e:
-        logger.exception(e)  # Проверить корректность вывода ошибки!!!
+        logger.exception(e)  # Подробный вывод ошибки в логе
         return False

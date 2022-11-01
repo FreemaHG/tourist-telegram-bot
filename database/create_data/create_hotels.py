@@ -4,10 +4,13 @@ from typing import Union
 
 
 def create_new_hotel(
-        id_hotel: int, id_location: int,
+        id_hotel: int,
+        id_location: int,
         name: str,
-        address: Union[str, bool], distance_to_center:
-        Union[str, bool], price: Union[float, bool]):
+        address: Union[str, bool],
+        distance_to_center:
+        Union[str, bool],
+        price: Union[float, bool]):
 
     """ Создаем новую запись об отеле в БД """
 
@@ -18,7 +21,7 @@ def create_new_hotel(
             name=name
         )
 
-    # Проверка не обязательных параметров (которые могут не встречаться в ответе от API)
+    # Проверка не обязательных параметров (могут не встречаться в ответе от API)
     if address:
         new_hotel.address = address
 

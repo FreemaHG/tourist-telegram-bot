@@ -1,23 +1,19 @@
 from utils.request_for_api.get_hostels import get_hostels
 from utils.request_for_api.get_photos import preparation_photos
-from database.check_data.check_hotels import check_hotels_by_id_location  # Проверка отеля в БД
+from database.check_data.check_hotels import check_hotels_by_id_location
 from database.get_data.get_photos import get_photos_of_hotel
-
 from multiprocessing.pool import ThreadPool
 import multiprocessing
 from threading import Lock
 from loguru import logger
 import time
 from typing import Union, List
-from datetime import date
-
 from utils.misc.list_divider import func_chunks_generators
 
 
 LOCK = Lock()  # Для избежания ошибок при сохранении данных в БД в разных потоках
 
 
-# ПРОВЕРИТЬ КОЛ-ВО СОХРАНЯЕМЫХ ОТЕЛЕЙ!!!
 def get_result(
         command: str,
         id_location: int,
@@ -74,51 +70,43 @@ def get_result(
                 if False in async_response:
                     logger.warning('thread | не все фото были загружены ')
 
-                time.sleep(0.5)  # Задержка в 0.5 сек между запросами к API
+                time.sleep(0.5)  # Задержка в 0.5 сек между запросами к API (во избежания 429 ошибки)
 
             logger.debug(f'Затраченное время на сохранение фото: {time.time() - start} сек')
 
-    # Повторная проверка отелей в БД
-    hotels = check_hotels_by_id_location(
-        id_location=id_location,
-        command=command,
-        min_price=min_price,
-        max_price=max_price,
-        min_distance_to_center=min_distance_to_center,
-        max_distance_to_center=max_distance_to_center
-    )
+        # Повторная проверка отелей в БД
+        hotels = check_hotels_by_id_location(
+            id_location=id_location,
+            command=command,
+            min_price=min_price,
+            max_price=max_price,
+            min_distance_to_center=min_distance_to_center,
+            max_distance_to_center=max_distance_to_center
+        )
 
-    if not hotels:
-        logger.error('Ошибка в чтении данных с БД после возврата сведений от API')
-        return False
+        if not hotels:
+            logger.error('Ошибка в чтении данных с БД после возврата сведений от API')
+            return False
 
-    if len(hotels) > number_of_hotels:  # Возможно len(hotels) не работает!!!
+    if len(hotels) > number_of_hotels:
         hotels = hotels[:number_of_hotels]  # Убираем лишние результаты
 
     for hotel in hotels:
         if number_of_photos is not None:
             number_of_photos = int(number_of_photos)
-            hotel_photos, rooms_photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
+            photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
 
-            if not hotel_photos or not rooms_photos:
+            if not photos:
                 logger.warning('нет фото отеля, имеющегося в БД')
                 preparation_photos(hotel.id)  # Получаем фото отеля из запроса к API
-                hotel_photos, rooms_photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
-
-            photos = hotel_photos + rooms_photos
+                photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
 
         else:
             photos = None
 
-        # Подготавливаем нужные данные для вывода пользователю (ВОЗМОЖНО ПЕРЕДЕЛАТЬ ФОРМАТ - ВОЗВРАЩАТЬ ТОЛЬКО ОБЪЕКТ!)
         result_list.append(
             {
                 'object': hotel,
-                'id': hotel.id,
-                'hotel': hotel.name,
-                'address': hotel.address,
-                'distance_to_center': hotel.distance_to_center,
-                'price': hotel.price,
                 'photos': photos
             }
         )

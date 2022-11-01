@@ -1,10 +1,10 @@
-import re
 from typing import List, Dict, Union
+import re
 from loguru import logger
 
 
 def save_distance(data_list: List[Dict]) -> Union[float, bool]:
-    """ Сохранение нужного параметра с расстоянием отеля до центра города """
+    """ Находим, извлекаем и сохраняем расстояние отеля до центра в нужном формате """
 
     pattern = r'(\d*)'
 

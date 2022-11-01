@@ -1,9 +1,8 @@
 from telebot.handler_backends import State, StatesGroup
 
 
-# Описываем класс состояний пользователя при вводе данных для хендлера
 class UserInfoForLowprice(StatesGroup):
-    # Каждый вопрос должен быть объектом класса State
+    """ Класс состояний пользователя, используется для поочередного ввода данных в хендлерах """
     city = State()  # Город
     check_date = State()  # Ввод дат заселения и выселения
     min_price = State()  # Диапазон цен (минимальная цена)

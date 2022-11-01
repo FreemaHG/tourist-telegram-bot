@@ -1,15 +1,14 @@
 from database.create_db import Locations, session
+from typing import Union, List
 from loguru import logger
 from sqlalchemy import or_
-from typing import Union, List
 
 
 def check_location(location_name: str) -> Union[List, bool]:
-    """ Проверка локации в БД """
+    """ Проверка локации в БД по переданному названию """
 
     location_name = location_name.capitalize()  # Первая буква заглавная
 
-    # Проверить поиск с разными регистрами
     # contains - поиск частичного совпадения названия переданной локации в адресе локаций в БД
     location = session.query(Locations)\
         .filter(or_(location_name == Locations.name, Locations.location.contains(location_name)))\

@@ -9,7 +9,6 @@ session = Session()
 
 
 class Locations(Base):
-    """ Структурная таблица с сохранением локаций, их id и id их дочерних записей """
     __tablename__ = 'locations'
 
     # id локации - не может быть пустым, автоматически НЕ заполняется
@@ -31,7 +30,7 @@ class Hotels(Base):
     price = Column(Integer, nullable=True)
 
     photos = relationship('Photos', backref='hotels')  # Связь с таблицей "Photos"
-    history = relationship("Association", back_populates='hotel')
+    history = relationship("Association", back_populates='hotel')  # Связь с таблицей "Association"
 
 
 class Photos(Base):
@@ -43,7 +42,6 @@ class Photos(Base):
     type = Column(String(50), nullable=False)  # room / hotel
 
 
-# ПРОВЕРИТЬ НАСТРОЙКУ ТАБЛИЦ
 class History(Base):
     __tablename__ = 'history'
 
