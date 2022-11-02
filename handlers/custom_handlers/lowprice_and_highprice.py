@@ -27,7 +27,6 @@ def bot_lowprice(message: Message) -> None:
     TIMESTAMP_DATA_START = message.date  # Время выполнения команды в формате timestamp
 
     logger.info(f'Запуск сценария {COMMAND}')
-
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
 
     # Как сохранить название команды и время ввода команды в текущей функции? Ошибка KeyError
@@ -265,10 +264,7 @@ def get_photos(message: Message) -> None:
             logger.debug(f'user_id({message.from_user.id}) | данные сохранены: photos - {message.text}')
 
     if result is False:
-        # СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ СРАЗУ (БЕЗ НАЖАТИЯ ДОП.КНОПКИ)
-        bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
-        logger.info('Данные собраны, передача параметров для запроса к API')
-        bot.register_next_step_handler(message, response_to_the_user)
+        response_to_user(message)  # Поиск предложений
 
 
 # Следующим шагом ловим отлавливаем состояние UserInfoForLowprice.number_of_photos - предыдущий шаг
@@ -295,22 +291,15 @@ def get_number_of_photos(message: Message) -> None:
             data['number_of_photos'] = count_photos  # Сохраняем введенное пользователем число
 
         logger.debug(f'user_id({message.from_user.id}) | данные сохранены: number_of_photos - {count_photos}')
-
-        bot.send_message(message.from_user.id, 'Все понял, сейчас поищу варианты...')
-
-        # # СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ СРАЗУ (БЕЗ НАЖАТИЯ ДОП.КНОПКИ)
-        bot.send_message(message.from_user.id, 'Нажми кнопку для поиска')
-        logger.info('Данные собраны, передача параметров для запроса к API')
-        bot.register_next_step_handler(message, response_to_the_user)
+        response_to_user(message)  # Поиск предложений
 
     else:  # Если введены НЕ числа
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число')
 
 
-# СДЕЛАТЬ ВЫЗОВ ФУНКЦИИ БЕЗ ДОП. НАЖАТИЯ КЛАВИШИ!!!
-def response_to_the_user(message: Message):
-    """ Возвращаем пользователю найденные ответы """
+def response_to_user(message: Message):
+    """ Возвращаем найденные предложения """
 
     bot.send_message(message.from_user.id, 'Ищем варианты, ожидайте...')
 
@@ -324,12 +313,6 @@ def response_to_the_user(message: Message):
             check_in_date, check_out_date, count_night = None, None, None
 
         try:
-            number_of_photos = data["number_of_photos"]
-        except KeyError:
-            logger.warning('number_of_photos отсутствует')
-            number_of_photos = None
-
-        try:
             min_price = data['min_price']
             max_price = data['max_price']
             min_distance_to_center = data['min_distance_to_center']
@@ -337,6 +320,12 @@ def response_to_the_user(message: Message):
         except KeyError:
             logger.warning('Диапазоны цен и расстояний отсутствуют')
             min_price, max_price, min_distance_to_center, max_distance_to_center = None, None, None, None
+
+        try:
+            number_of_photos = data["number_of_photos"]
+        except KeyError:
+            logger.warning('number_of_photos отсутствует')
+            number_of_photos = None
 
         result = get_result(
             command=COMMAND,
@@ -360,14 +349,13 @@ def response_to_the_user(message: Message):
             if COMMAND == '/bestdeal':
                 bot.send_message(message.from_user.id, 'Лучшие предложения по цене и расстоянию до центра '
                                                        '(цена в приоритете)')
-
+            # Сохраняем историю запроса
             new_history = create_new_history(
                 user_id=message.from_user.id,
                 command=COMMAND,
                 date_of_entry=datetime.datetime.fromtimestamp(float(TIMESTAMP_DATA_START))
             )
 
-            # Обновить с учетом измененного вывода функции get_result
             for hotel in result:
                 # Сохраняем историю запросов
                 new_record = Association()
@@ -397,7 +385,7 @@ def response_to_the_user(message: Message):
                     )]
 
                     # Добавляем оставшиеся фото
-                    for photo in hotel['photos'][1:10]:  # До 10 медиафайлов в одном сообщении
+                    for photo in hotel['photos'][1:10]:  # До 10 медиафайлов в одном сообщении (доп.проверка)
                         media_group.append(InputMediaPhoto(photo))
 
                     bot.send_media_group(message.from_user.id, media=media_group)

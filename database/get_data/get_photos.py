@@ -32,4 +32,4 @@ def get_photos_of_hotel(id_hotel: int, number_of_photos: int) -> Union[List, Tup
         return photo_of_hotel[:2] + photo_of_rooms[:number_of_photos - 2]
 
     else:
-        return photo_of_hotel[:3] + photo_of_rooms[:8]  # макс. 10 фото
+        return photo_of_hotel[:3] + photo_of_rooms[:number_of_photos - 2]
