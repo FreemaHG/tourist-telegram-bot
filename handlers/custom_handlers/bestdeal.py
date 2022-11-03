@@ -39,7 +39,9 @@ def get_max_price(message: Message) -> None:
             else:
                 logger.info(f'user_id({message.from_user.id}) | данные приняты: max_price - {message.text}')
                 bot.send_message(message.from_user.id,
-                                 'Хорошо. Введите минимально допустимое расстояние до центра (в км)')
+                                 'Хорошо. Укажите диапазон расстояний до центра')
+                bot.send_message(message.from_user.id,
+                                 'Минимально допустимое расстояние (в км)')
                 bot.set_state(message.from_user.id, UserInfoForLowprice.min_distance_to_center, message.chat.id)
     else:
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число!')

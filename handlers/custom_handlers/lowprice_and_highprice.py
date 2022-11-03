@@ -12,30 +12,18 @@ from loguru import logger
 import datetime
 
 
-# УДАЛИТЬ (ИСПОЛЬЗУЕТСЯ ДЛЯ ПРОВЕРКИ)
-COMMAND = ''
-TIMESTAMP_DATA_START = ''
-
-
 @bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
 def bot_lowprice(message: Message) -> None:
     """ Запрашиваем город для поиска """
 
-    # УДАЛИТЬ (ПОДУАМТЬ КАК ПЕРЕДАВАТЬ НАЗВАНИЕ КОМАНДЫ В КОНТЕКСТЕ)
-    global COMMAND, TIMESTAMP_DATA_START
-    COMMAND = message.text  # Выполняемая команда
-    TIMESTAMP_DATA_START = message.date  # Время выполнения команды в формате timestamp
-
-    logger.info(f'Запуск сценария {COMMAND}')
     bot.send_message(message.from_user.id, 'Укажите город для поиска')
-
-    # Как сохранить название команды и время ввода команды в текущей функции? Ошибка KeyError
-    # with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-    #     data['command'] = COMMAND
-    #     data['timestamp_data_start'] = TIMESTAMP_DATA_START
-
     # Присваиваем пользователю состояние (чтобы сработал следующий хендлер (шаг))
     bot.set_state(message.from_user.id, UserInfoForLowprice.city, message.chat.id)  # message.chat.id - не обязательно
+
+    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        data['command'] = message.text  # Выполняемая команда
+        data['timestamp_data_start'] = message.date  # Время выполнения команды в формате timestamp
+        logger.info(f'Запуск сценария {data["command"]}')
 
 
 @bot.message_handler(state=UserInfoForLowprice.city)
@@ -83,7 +71,6 @@ def callback_for_city(call):
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['city_id'] = id_location  # Сохраняем id локации
         logger.debug(f'user_id({call.from_user.id}) | данные сохранены: city_id - {id_location}')
-        # ДОБАВИТЬ ОТОБРАЖЕНИЕ ВЫБРАННОЙ ЛОКАЦИИ!!!
 
     bot.send_message(call.from_user.id, f'Желаете выбрать дату заселения/выезда?')
     bot.set_state(call.from_user.id, UserInfoForLowprice.check_date, call.message.chat.id)
@@ -91,7 +78,7 @@ def callback_for_city(call):
 
 @bot.message_handler(state=UserInfoForLowprice.check_date)
 def get_check_in_date(message: Message) -> None:
-    """ Запрашиваем дату заселения """  # Изменить
+    """ Запрашиваем дату заселения / кол-во отелей в выдаче / минимальную стоимость """
 
     if message.text.isalpha():
         if message.text.lower() == 'да':
@@ -101,18 +88,16 @@ def get_check_in_date(message: Message) -> None:
             bot.send_message(message.from_user.id, f"Выберите год", reply_markup=calendar)
 
         elif message.text.lower() == 'нет':
-
-            # Доп.вопросы для команды bestdeal
-            if COMMAND == '/bestdeal':
-                bot.send_message(message.from_user.id, f'Укажите диапазон цен')
-                bot.send_message(message.from_user.id, f'Минимальная цена (в руб.)')
-                bot.set_state(message.from_user.id, UserInfoForLowprice.min_price, message.chat.id)
-
-            else:
-                bot.send_message(message.from_user.id,
-                                 'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
-                bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
-
+            with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+                # Доп.вопросы для команды bestdeal
+                if data['command'] == '/bestdeal':
+                    bot.send_message(message.from_user.id, f'Укажите диапазон цен')
+                    bot.send_message(message.from_user.id, f'Минимальная цена (в руб.)')
+                    bot.set_state(message.from_user.id, UserInfoForLowprice.min_price, message.chat.id)
+                else:
+                    bot.send_message(message.from_user.id,
+                                     'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
+                    bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, f'Пожалуйста, выберите "Да" или "Нет"!')
@@ -134,7 +119,7 @@ def callback_for_check_dates(call):
     elif result:
         if result < datetime.date.today():
             logger.warning(f'user_id({call.from_user.id}) | не корректные данные: {result} < {datetime.date.today()}')
-            bot.edit_message_text(f"Выбранная дата не может быть раньше сегодняшней, повторите ввод",
+            bot.edit_message_text(f"Выбранная дата не может быть раньше текущей! Повторите ввод.",
                                   call.message.chat.id, call.message.message_id)
 
             calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').build()
@@ -172,7 +157,7 @@ def callback_for_check_dates(call):
                     f'user_id({call.from_user.id}) | не корректные данные: {result} < {datetime.date.today()} or '
                     f'{result} < {data["check_in_date"]}')
 
-                bot.edit_message_text(f"Выбранная дата не может быть раньше или равна дате заселения, повторите ввод",
+                bot.edit_message_text(f"Выбранная дата не может быть раньше или равна дате заселения! Повторите ввод.",
                                       call.message.chat.id, call.message.message_id)
 
                 calendar, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').build()
@@ -189,10 +174,10 @@ def callback_for_check_dates(call):
                 logger.debug(f'Кол-во ночей: {data["count_night"]}')
 
                 # Доп.вопросы для команды bestdeal
-                if COMMAND == '/bestdeal':
+                if data['command'] == '/bestdeal':
                     bot.send_message(call.from_user.id, f'Укажите диапазон цен')
+                    bot.send_message(call.from_user.id, f'Введите минимальную стоимость (в руб.)')
                     bot.set_state(call.from_user.id, UserInfoForLowprice.min_price, call.message.chat.id)
-
                 else:
                     bot.send_message(call.from_user.id,
                                      'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
@@ -328,7 +313,7 @@ def response_to_user(message: Message):
             number_of_photos = None
 
         result = get_result(
-            command=COMMAND,
+            command=data['command'],
             id_location=int(data["city_id"]),
             check_in_date=check_in_date,
             check_out_date=check_out_date,
@@ -346,14 +331,14 @@ def response_to_user(message: Message):
         else:
             logger.info('Данные получены')
 
-            if COMMAND == '/bestdeal':
+            if data['command'] == '/bestdeal':
                 bot.send_message(message.from_user.id, 'Лучшие предложения по цене и расстоянию до центра '
                                                        '(цена в приоритете)')
             # Сохраняем историю запроса
             new_history = create_new_history(
                 user_id=message.from_user.id,
-                command=COMMAND,
-                date_of_entry=datetime.datetime.fromtimestamp(float(TIMESTAMP_DATA_START))
+                command=data['command'],
+                date_of_entry=datetime.datetime.fromtimestamp(float(data['timestamp_data_start']))
             )
 
             for hotel in result:
@@ -371,8 +356,8 @@ def response_to_user(message: Message):
 
                 elif count_night is not None:
                     data_for_hotel += f"*Стоимость проживания:* \n" \
-                                      f"        за ночь - {hotel['object'].price} руб.\n" \
-                                      f"        с *{check_in_date.strftime('%d.%m.%Y')}* по " \
+                                      f"      - за ночь - {hotel['object'].price} руб.\n" \
+                                      f"      - с *{check_in_date.strftime('%d.%m.%Y')}* по " \
                                       f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
                                       f"{int(hotel['object'].price) * count_night} руб.\n"
 
