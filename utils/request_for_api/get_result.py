@@ -1,3 +1,5 @@
+from database.create_db import Photos, session
+from sqlalchemy.exc import IntegrityError
 from utils.request_for_api.get_hostels import get_hostels
 from utils.request_for_api.get_photos import preparation_photos
 from database.check_data.check_hotels import check_hotels_by_id_location
@@ -68,11 +70,17 @@ def get_result(
                 parent_pool.join()
 
                 if False in async_response:
-                    logger.warning('thread | не все фото были загружены ')
+                    logger.warning('thread | не все фото были загружены и сохранены')
 
                 time.sleep(0.5)  # Задержка в 0.5 сек между запросами к API (во избежания 429 ошибки)
 
             logger.debug(f'Затраченное время на сохранение фото: {time.time() - start} сек')
+
+        # try:
+        #     session.commit()
+        #     logger.debug(f'{count} партия фото успешно сохранена в БД')
+        # except IntegrityError:
+        #     logger.error(f'{count} партия фото | ОШИБКА при сохранении в БД')
 
         # Повторная проверка отелей в БД
         hotels = check_hotels_by_id_location(
@@ -101,8 +109,12 @@ def get_result(
                 preparation_photos(hotel.id)  # Получаем фото отеля из запроса к API
                 photos = get_photos_of_hotel(hotel.id, number_of_photos)  # Получаем фото отеля
 
+                if not photos:
+                    photos = None
+
         else:
             photos = None
+            logger.warning(f'В результатах отеля (id: {hotel.id} нет фото)')
 
         result_list.append(
             {

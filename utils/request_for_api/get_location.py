@@ -1,5 +1,5 @@
 from database.create_db import session
-from database.check_data.check_location_for_lowprice import check_location
+from database.check_data.check_location_for_name import check_location
 from database.create_data.create_location import create_new_location
 from utils.request_for_api.api_request import request_to_api
 from utils.misc.address_conversion import func_address_conversion

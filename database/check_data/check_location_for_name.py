@@ -14,7 +14,7 @@ def check_location(location_name: str) -> Union[List, bool]:
         .filter(or_(location_name == Locations.name, Locations.location.contains(location_name)))\
         .all()
 
-    if location is None:
+    if not location:
         logger.warning(f'db поиск локации | id локации: {location_name}, результатов не найдено')
         return False
 

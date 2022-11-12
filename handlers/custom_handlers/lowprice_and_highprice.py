@@ -347,38 +347,52 @@ def response_to_user(message: Message):
                 new_record.hotel = hotel['object']
                 new_history.hotels.append(new_record)  # Добавляем отель в историю
 
+                address = hotel['object'].address if hotel['object'].address is not None else 'нет данных'
+                distance_to_center = str(hotel['object'].distance_to_center) \
+                                     + ' км' if hotel['object'].distance_to_center is not None else 'нет данных'
+                price = hotel['object'].price
+
                 data_for_hotel = f"*Отель:* [{hotel['object'].name}](https://www.hotels.com/ho{hotel['object'].id})\n" \
-                                 f"*Адрес:* {hotel['object'].address}\n" \
-                                 f"*Расстояние до центра:* {hotel['object'].distance_to_center} км\n"
+                                 f"*Адрес:* {address}\n" \
+                                 f"*Расстояние до центра:* {distance_to_center}\n"
 
-                if count_night is None:
-                    data_for_hotel += f"*Стоимость:* {hotel['object'].price} руб/сут\n"
-
-                elif count_night is not None:
-                    data_for_hotel += f"*Стоимость проживания:* \n" \
-                                      f"      - за ночь - {hotel['object'].price} руб.\n" \
-                                      f"      - с *{check_in_date.strftime('%d.%m.%Y')}* по " \
-                                      f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
-                                      f"{int(hotel['object'].price) * count_night} руб.\n"
+                if price is not None:
+                    if count_night is None:
+                        data_for_hotel += f"*Стоимость:* {price} руб/сут\n"
+                    else:
+                        data_for_hotel += f"*Стоимость проживания:* \n" \
+                                          f"      - за ночь - {hotel['object'].price} руб.\n" \
+                                          f"      - с *{check_in_date.strftime('%d.%m.%Y')}* по " \
+                                          f"*{check_out_date.strftime('%d.%m.%Y')}* - " \
+                                          f"{int(hotel['object'].price) * count_night} руб.\n"
+                else:
+                    data_for_hotel += f"*Стоимость:* нет данных\n"
 
                 # Отправка результатов с фото
                 if number_of_photos is not None:
-                    # Указываем описание к отелю для 1 фото
-                    media_group = [InputMediaPhoto(
-                        hotel['photos'][0],
-                        caption=data_for_hotel, parse_mode='Markdown'  # Для вывода жирного текста
-                    )]
+                    if hotel['photos'] is None:
+                        bot.send_message(message.from_user.id, data_for_hotel, parse_mode='Markdown')
+                        bot.send_message(message.from_user.id, 'Извините, но для данного отеля нет фото...')
+                        logger.info('Отправлены данные без фото')
 
-                    # Добавляем оставшиеся фото
-                    for photo in hotel['photos'][1:10]:  # До 10 медиафайлов в одном сообщении (доп.проверка)
-                        media_group.append(InputMediaPhoto(photo))
+                    else:
+                        # Указываем описание к отелю для 1 фото
+                        media_group = [InputMediaPhoto(
+                            hotel['photos'][0],
+                            caption=data_for_hotel, parse_mode='Markdown'  # Для вывода жирного текста
+                        )]
 
-                    bot.send_media_group(message.from_user.id, media=media_group)
-                    logger.info('Отправлены данные с фото')
+                        # Добавляем оставшиеся фото
+                        for photo in hotel['photos'][1:10]:  # До 10 медиафайлов в одном сообщении (доп.проверка)
+                            media_group.append(InputMediaPhoto(photo))
 
+                        bot.send_media_group(message.from_user.id, media=media_group)
+                        logger.info('Отправлены данные с фото')
                 else:
                     bot.send_message(message.from_user.id, data_for_hotel, parse_mode='Markdown')
                     logger.info('Отправлены данные без фото')
+
+            bot.send_message(message.from_user.id, f'*Найденных предложений*: {len(result)}', parse_mode='Markdown')
 
             session.add(new_history)
             session.commit()
