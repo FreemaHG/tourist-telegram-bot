@@ -1,6 +1,7 @@
-from database.create_db import Photos, session
 from loguru import logger
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
+
+from database.create_db import Photos, session
 
 
 def create_new_photo(id_photo: int, id_hotel: int, url: str, type_photo: str) -> None:
@@ -19,6 +20,7 @@ def create_new_photo(id_photo: int, id_hotel: int, url: str, type_photo: str) ->
         logger.debug(f'db | сохранение фото в БД, id: {id_photo}')
     except IntegrityError:
         logger.warning(f'дубликат фото | id фото: {id_photo}')
+        session.rollback()  # Откат сессии
     except PendingRollbackError:
         logger.warning(f'откат сессии из-за дубляжа фото | id фото: {id_photo}')
-        session.rollback()  # Откат сессии
+

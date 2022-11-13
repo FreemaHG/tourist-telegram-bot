@@ -1,7 +1,9 @@
-from database.create_db import Hotels, session
-from loguru import logger
 from typing import Union, List
-from sqlalchemy import and_
+
+from loguru import logger
+from sqlalchemy import and_, or_
+
+from database.create_db import Hotels, session
 
 
 def check_hotels_by_id_location(
@@ -20,10 +22,12 @@ def check_hotels_by_id_location(
         hotels = session.query(Hotels).filter(Hotels.id_location == id_location).order_by(Hotels.price).all()
 
     elif command == '/highprice':
-        hotels = session.query(Hotels).filter(Hotels.id_location == id_location).order_by(Hotels.price.desc()).all()
         logger.info(f'db поиск отелей (/highprice) | сортировка по убыванию цены')
+        hotels = session.query(Hotels).filter(Hotels.id_location == id_location).order_by(Hotels.price.desc()).all()
 
     elif command == '/bestdeal':
+        logger.info(f'db поиск отелей (/bestdeal) | сортировка по возрастанию цены и расстояния до центра')
+
         if None in [min_price, max_price, min_distance_to_center, max_distance_to_center]:
             logger.error(f'Один из ключевых параметров отсутствует: '
                          f'min_price - {min_price}, max_price - {max_price},'
@@ -33,18 +37,29 @@ def check_hotels_by_id_location(
 
         hotels = session.query(Hotels).filter(
             Hotels.id_location == id_location,
-            and_(Hotels.distance_to_center >= float(min_distance_to_center),
-                 Hotels.distance_to_center <= float(max_distance_to_center)),
-            and_(Hotels.price >= float(min_price), Hotels.price <= float(max_price))
-        ).order_by(Hotels.price, Hotels.distance_to_center).all()
-        logger.info(f'db поиск отелей (/bestdeal) | сортировка по возрастанию цены и расстояния до центра')
-
+            or_(and_(Hotels.distance_to_center >= float(min_distance_to_center),
+                     Hotels.distance_to_center <= float(max_distance_to_center)),
+                and_(Hotels.price >= float(min_price), Hotels.price <= float(max_price))
+                )).order_by(Hotels.price, Hotels.distance_to_center).all()
     else:
         logger.warning(f'db поиск отелей | команда не распознана: command - {command}')
         return False
 
     if not hotels:
-        logger.warning(f'db поиск отелей | id локации: {id_location}, результатов не найдено')
+        if command == '/bestdeal':
+            logger.warning('db доп.запрос для bestdeal | без учета строгих фильтров по цене и расстояниям')
+            # Доп.проверка отелей (для избежания излишнего запроса к API
+            # при ненахождении отелей по переданным в фильтр условиям)
+            hotels = session.query(Hotels).filter(Hotels.id_location == id_location)\
+                .order_by(Hotels.price, Hotels.distance_to_center).all()
+
+            if not hotels:
+                return False
+
+            return hotels
+
+        logger.warning(f'db поиск отелей | id локации: {id_location}, '
+                       f'не найдено результатов соответствующим заданным условиям')
         return False
 
     logger.info(f'db поиск отелей | id локации: {id_location}, найдены совпадения')

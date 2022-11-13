@@ -1,8 +1,10 @@
-from database.create_db import Photos, session
+from typing import Union, List, Tuple
+from itertools import chain
+
 from loguru import logger
 from sqlalchemy import and_
-from itertools import chain
-from typing import Union, List, Tuple
+
+from database.create_db import Photos, session
 
 
 def get_photos_of_hotel(id_hotel: int, number_of_photos: int) -> Union[List, Tuple[List, List]]:

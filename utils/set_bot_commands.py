@@ -1,4 +1,5 @@
 from telebot.types import BotCommand
+
 from config_data.config import DEFAULT_COMMANDS, CUSTOM_COMMANDS
 
 COMMANDS = DEFAULT_COMMANDS + CUSTOM_COMMANDS  # Все команды для бота

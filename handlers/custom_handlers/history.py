@@ -1,7 +1,8 @@
-from database.get_data.get_history import get_history_user
-from loader import bot
 from telebot.types import Message
+from loader import bot
 from loguru import logger
+
+from database.get_data.get_history import get_history_user
 
 
 @bot.message_handler(commands=['history'])

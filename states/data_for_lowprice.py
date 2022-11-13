@@ -3,6 +3,7 @@ from telebot.handler_backends import State, StatesGroup
 
 class UserInfoForLowprice(StatesGroup):
     """ Класс состояний пользователя, используется для поочередного ввода данных в хендлерах """
+
     city = State()  # Город
     check_date = State()  # Ввод дат заселения и выселения
     min_price = State()  # Диапазон цен (минимальная цена)

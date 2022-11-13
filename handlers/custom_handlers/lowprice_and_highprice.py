@@ -1,15 +1,21 @@
+# Стандартная библиотека
+import datetime
+import time
+
+# Сторонние библиотеки
+from telebot.types import Message, InputMediaPhoto  # Аннотация типов
+from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP  # Выбор дат заселения/выселения
+from loader import bot
+from loguru import logger
+
+# Внутренние модули
 from database.create_db import Association
 from database.create_data.create_history import create_new_history
-from database.create_db import History, session
+from database.create_db import session
 from utils.request_for_api.get_location import city_markup
 from utils.request_for_api.get_result import get_result
 from states.data_for_lowprice import UserInfoForLowprice
-from . import bestdeal  # Для доп.вопросов для команды bestdeal
-from loader import bot
-from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
-from telebot.types import Message, InputMediaPhoto  # Для аннотации типов
-from loguru import logger
-import datetime
+from handlers.custom_handlers import bestdeal  # Для доп.вопросов для команды bestdeal
 
 
 @bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
@@ -37,7 +43,7 @@ def city(message: Message):
             logger.warning(f'user_id({message.from_user.id}) | пользователь прекратил сценарий')
 
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['location_name'] = message.text  # Сохраняем название локации
+            data['location_name'] = message.text.capitalize()  # Сохраняем название локации (1 буква заглавная)
             logger.debug(f'user_id({message.from_user.id}) | данные сохранены: location_name - {message.text}')
 
             # Передаем в функцию текст от пользователя, получаем локации от API и возвращаем пользователю
@@ -98,6 +104,9 @@ def get_check_in_date(message: Message) -> None:
                     bot.send_message(message.from_user.id,
                                      'Хорошо. Сколько отелей показать в выдаче (не более 15!)?')
                     bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
+        else:
+            logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
+            bot.send_message(message.from_user.id, f'Пожалуйста, выберите "Да" или "Нет"!')
     else:
         logger.warning(f'user_id({message.from_user.id}) | не корректные данные: {message.text}')
         bot.send_message(message.from_user.id, f'Пожалуйста, выберите "Да" или "Нет"!')
@@ -326,12 +335,17 @@ def response_to_user(message: Message):
         )
 
         if result is False:
-            logger.error('Данные не получены')
-            bot.send_message(message.from_user.id, 'К сожалению, API не отвечает...')
+            logger.error('Данные по отелям не получены')
+            if data['command'] == '/bestdeal':
+                bot.send_message(message.from_user.id, 'К сожалению, предложения, соответствующие условиям, не найдены.'
+                                                       'Попробуйте ввести другие диапазоны цен и расстояний до центра')
+            else:
+                bot.send_message(message.from_user.id, 'К сожалению, API не отвечает...')
         else:
             logger.info('Данные получены')
 
             if data['command'] == '/bestdeal':
+                flag = False
                 bot.send_message(message.from_user.id, 'Лучшие предложения по цене и расстоянию до центра '
                                                        '(цена в приоритете)')
             # Сохраняем историю запроса
@@ -392,7 +406,27 @@ def response_to_user(message: Message):
                     bot.send_message(message.from_user.id, data_for_hotel, parse_mode='Markdown')
                     logger.info('Отправлены данные без фото')
 
-            bot.send_message(message.from_user.id, f'*Найденных предложений*: {len(result)}', parse_mode='Markdown')
+                # Проверка данных по отелю условиям поиска (для вывода сообщения в конце)
+                if data['command'] == '/bestdeal' and flag is False \
+                        and ((type(hotel['object'].distance_to_center) == float
+                             and (min_distance_to_center > hotel['object'].distance_to_center or hotel['object']
+                                .distance_to_center > max_distance_to_center))
+                             or (type(price) == int and (int(min_price) > price or price > int(max_price)))):
+                    flag = True
+                    logger.debug('Смена флага')
+
+                # Задержка между сообщениями (для избежания 429 ошибки от TeleBot - слишком много запросов)
+                time.sleep(0.3)
+
+            if data['command'] == '/bestdeal' and flag is False:
+                bot.send_message(message.from_user.id, f'*Найдено предложений, соответствующих условиям*: {len(result)}'
+                                 , parse_mode='Markdown')
+            elif data['command'] == '/bestdeal' and flag is True:
+                bot.send_message(message.from_user.id, '* не найдено результатов соответствующим заданным условиям '
+                                                       'по цене и расстоянию до центра. '
+                                                       'Выведены все найденные предложения в указанной местности...')
+            else:
+                bot.send_message(message.from_user.id, f'*Найдено предложений*: {len(result)}', parse_mode='Markdown')
 
             session.add(new_history)
             session.commit()

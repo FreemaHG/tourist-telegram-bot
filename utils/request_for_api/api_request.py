@@ -1,9 +1,11 @@
-from config_data.config import RAPID_API_KEY
-import time
 from requests import get
+import time
 import requests
 import json
+
 from loguru import logger
+
+from config_data.config import RAPID_API_KEY
 
 
 HEADERS = {

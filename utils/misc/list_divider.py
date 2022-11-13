@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Generator
 
 
-def func_chunks_generators(data_list: List[int], number: int):
+def func_chunks_generators(data_list: List[int], number: int) -> Generator:
     """
     Функция разбивает переданный список с элементами на подсписки с кол-вом элементов, равным переданному значению
     """

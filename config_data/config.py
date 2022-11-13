@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv, find_dotenv
 
 # Функция find_dotenv возвращает путь к файлу .env, если такой есть

@@ -1,5 +1,6 @@
-from loguru import logger
 from typing import Union
+
+from loguru import logger
 
 
 def func_address_conversion(string: str) -> Union[str, bool]:

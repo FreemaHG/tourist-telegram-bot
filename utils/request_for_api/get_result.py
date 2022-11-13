@@ -1,15 +1,15 @@
-from database.create_db import Photos, session
-from sqlalchemy.exc import IntegrityError
+from typing import Union, List
+import time
+import multiprocessing
+from multiprocessing.pool import ThreadPool
+from threading import Lock
+
+from loguru import logger
+
 from utils.request_for_api.get_hostels import get_hostels
 from utils.request_for_api.get_photos import preparation_photos
 from database.check_data.check_hotels import check_hotels_by_id_location
 from database.get_data.get_photos import get_photos_of_hotel
-from multiprocessing.pool import ThreadPool
-import multiprocessing
-from threading import Lock
-from loguru import logger
-import time
-from typing import Union, List
 from utils.misc.list_divider import func_chunks_generators
 
 
@@ -76,12 +76,6 @@ def get_result(
 
             logger.debug(f'Затраченное время на сохранение фото: {time.time() - start} сек')
 
-        # try:
-        #     session.commit()
-        #     logger.debug(f'{count} партия фото успешно сохранена в БД')
-        # except IntegrityError:
-        #     logger.error(f'{count} партия фото | ОШИБКА при сохранении в БД')
-
         # Повторная проверка отелей в БД
         hotels = check_hotels_by_id_location(
             id_location=id_location,
@@ -93,7 +87,7 @@ def get_result(
         )
 
         if not hotels:
-            logger.error('Ошибка в чтении данных с БД после возврата сведений от API')
+            logger.error('Данные по отелям не получены от БД')
             return False
 
     if len(hotels) > number_of_hotels:

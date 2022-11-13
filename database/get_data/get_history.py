@@ -1,6 +1,8 @@
-from database.create_db import History, Hotels, session
-from loguru import logger
 from typing import Union, List, Dict
+
+from loguru import logger
+
+from database.create_db import History, Hotels, session
 
 
 def get_history_user(id_user: int) -> Union[List[Dict], bool]:

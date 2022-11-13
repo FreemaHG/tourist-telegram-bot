@@ -1,10 +1,12 @@
-from database.create_data.create_photos import create_new_photo
-from utils.request_for_api.api_request import request_to_api
 import threading
 from threading import Lock
 import re
-from loguru import logger
 import json
+
+from loguru import logger
+
+from database.create_data.create_photos import create_new_photo
+from utils.request_for_api.api_request import request_to_api
 
 
 LOCK = Lock()

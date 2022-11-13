@@ -1,8 +1,9 @@
-from loader import bot  # Импортируем бота из файла loader.py
-import handlers  # Отработка скриптов по командам (не удалять!!!)
-from database.create_db import Base, engine
 from telebot.custom_filters import StateFilter  # Для поддержки ботом состояний
+
+from loader import bot  # Импортируем бота из файла loader.py
+from database.create_db import Base, engine
 from utils.set_bot_commands import set_commands
+import handlers  # Отработка скриптов по командам (не удалять!!!)
 
 
 if __name__ == '__main__':

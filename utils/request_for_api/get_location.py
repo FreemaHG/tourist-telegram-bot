@@ -1,13 +1,15 @@
+from typing import Union, List, Any
+import json
+import re
+
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from loguru import logger
+
 from database.create_db import session
 from database.check_data.check_location_for_name import check_location
 from database.create_data.create_location import create_new_location
 from utils.request_for_api.api_request import request_to_api
 from utils.misc.address_conversion import func_address_conversion
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import json
-import re
-from loguru import logger
-from typing import Union, List, Dict, Any
 
 
 URL = 'https://hotels4.p.rapidapi.com/locations/v2/search'

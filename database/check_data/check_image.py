@@ -1,8 +1,10 @@
-from database.create_db import Photos, session
+import time
+import threading
+
 from loguru import logger
 from sqlalchemy.exc import InvalidRequestError
-import threading
-import time
+
+from database.create_db import Photos, session
 
 
 def check_img(id_img: int, count: int = 1) -> bool:

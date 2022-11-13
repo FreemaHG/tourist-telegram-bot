@@ -1,13 +1,15 @@
+from typing import List, Union
+import json
+import re
+import datetime
+from datetime import date
+
+from loguru import logger
+
 from database.create_db import session
 from database.create_data.create_hotels import create_new_hotel
 from utils.request_for_api.api_request import request_to_api
 from utils.misc.save_distance_to_center import save_distance
-import json
-import re
-import datetime
-from loguru import logger
-from datetime import date
-from typing import List, Union
 
 
 URL = 'https://hotels4.p.rapidapi.com/properties/list'

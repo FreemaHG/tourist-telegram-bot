@@ -1,5 +1,6 @@
-from database.create_db import Locations, session
 from loguru import logger
+
+from database.create_db import Locations, session
 
 
 def create_new_location(id_location: int, name_location: str, location: str):

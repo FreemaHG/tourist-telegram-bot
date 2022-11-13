@@ -1,6 +1,8 @@
-from database.create_db import Hotels, session
-from loguru import logger
 from typing import Union
+
+from loguru import logger
+
+from database.create_db import Hotels, session
 
 
 def create_new_hotel(

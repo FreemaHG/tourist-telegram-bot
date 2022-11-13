@@ -1,8 +1,9 @@
-from states.data_for_lowprice import UserInfoForLowprice  # Для отслеживания состояний
-from . import lowprice_and_highprice  # Для возврата к основной логике вопросов
-from loader import bot
 from telebot.types import Message
+from loader import bot
 from loguru import logger
+
+from states.data_for_lowprice import UserInfoForLowprice  # Для отслеживания состояний
+from handlers.custom_handlers import lowprice_and_highprice  # Для возврата к основной логике вопросов
 
 
 @bot.message_handler(state=UserInfoForLowprice.min_price)
@@ -12,7 +13,7 @@ def get_min_price(message: Message) -> None:
     if message.text.isdigit():
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['min_price'] = message.text
-            logger.info(f'user_id({message.from_user.id}) | данные приняты: min_price - {message.text}')
+            logger.debug(f'user_id({message.from_user.id}) | данные приняты: min_price - {message.text}')
             bot.send_message(message.from_user.id, 'Записал. Укажите максимальную цену (в руб.)')
             bot.set_state(message.from_user.id, UserInfoForLowprice.max_price, message.chat.id)
     else:
@@ -37,7 +38,7 @@ def get_max_price(message: Message) -> None:
                 bot.set_state(message.from_user.id, UserInfoForLowprice.min_price, message.chat.id)
 
             else:
-                logger.info(f'user_id({message.from_user.id}) | данные приняты: max_price - {message.text}')
+                logger.debug(f'user_id({message.from_user.id}) | данные приняты: max_price - {message.text}')
                 bot.send_message(message.from_user.id,
                                  'Хорошо. Укажите диапазон расстояний до центра')
                 bot.send_message(message.from_user.id,
@@ -55,7 +56,7 @@ def get_min_distance_to_center(message: Message) -> None:
     if message.text.isdigit():
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['min_distance_to_center'] = message.text
-            logger.info(f'user_id({message.from_user.id}) | данные приняты: min_distance_to_center - {message.text}')
+            logger.debug(f'user_id({message.from_user.id}) | данные приняты: min_distance_to_center - {message.text}')
             bot.send_message(message.from_user.id,
                              'Записал. Укажите максимально допустимое расстояние до центра (в км)')
             bot.set_state(message.from_user.id, UserInfoForLowprice.max_distance_to_center, message.chat.id)
@@ -84,8 +85,8 @@ def get_max_distance_to_center(message: Message) -> None:
 
             else:
                 bot.send_message(message.from_user.id, 'Запомнил. Сколько отелей показать в выдаче (не более 15!)?')
-                logger.info(f'user_id({message.from_user.id}) | '
-                            f'данные приняты: max_distance_to_center - {message.text}')
+                logger.debug(f'user_id({message.from_user.id}) | '
+                             f'данные приняты: max_distance_to_center - {message.text}')
                 bot.set_state(message.from_user.id, UserInfoForLowprice.number_of_hotels, message.chat.id)
     else:
         bot.send_message(message.from_user.id, 'Пожалуйста, введите число!')

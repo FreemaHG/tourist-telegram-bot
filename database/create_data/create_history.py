@@ -1,6 +1,8 @@
-from database.create_db import History
-from loguru import logger
 from datetime import datetime
+
+from loguru import logger
+
+from database.create_db import History
 
 
 def create_new_history(user_id: int, command: str, date_of_entry: datetime) -> History:
