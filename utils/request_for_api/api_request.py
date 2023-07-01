@@ -29,7 +29,7 @@ def request_to_api(url, querystring, count: int = 0) -> json:
             return response
         else:
             # В случае неудачного ответа повторяем запрос
-            logger.error(f' запрос к API | плохой ответ {response.status_code}, повтор запроса ч/з 0.5 сек')
+            logger.error(f' запрос к API | плохой ответ: {response.status_code}, повтор запроса ч/з 0.5 сек')
             count += 1
             time.sleep(0.5)
             response = request_to_api(url, querystring, count)

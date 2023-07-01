@@ -1,32 +1,68 @@
-## Getting started
-This bot is tested with Python 3.9 and pyTelegramBotAPI 4.4.0.
+# Описание
 
-* Downloading files from the repository
+Бот разработан и протестирован на Python 3.9 и pyTelegramBotAPI 4.4.0 и работает 
+на базе [Hotels API](https://rapidapi.com/apidojo/api/hotels4/).
+
+# Оглавление
+1. [Установка](#Установка)
+2. [Команды](#Команды)
+3. [Принцип общения с ботом](#Принцип общения с ботом)
+4. [Скриншоты](#Скриншоты)
+
+## Установка
+
+* Скачиваем файлы из репозитория:
 ```
 $ git clone https://gitlab.skillbox.ru/dmitrii_stafeev/python_basic_diploma.git
 ```
-* Installing dependencies
+* Устанавливаем зависимости:
 ```
 $ pip install -r requirements.txt
 ```
-## Commands
+* В корне проекта создаем файл .env (по примеру .env.template) со следующими переменными окружения:
+  * токен для бота (получаем токен у [@BotFather](https://web.telegram.org/k/#@BotFather))
+  * ключ для API (получаем [на странице документации API](rapidapi.com/apidojo/api/hotels4/))
+
+
+* Запускаем скрипт:
+```
+$ python main.py
+```
+
+# Команды
+
 * ### /start
-Output of a simple welcome message
+Вывод простого приветственного сообщения.
+
 * ### /help
-Output of a hint message with a list of supported commands and a brief description of each of them.
+Вывод подсказки по поддерживаемым командам и кратким описанием каждой из них.
+
 * ### /lowprice
-Conclusion of the TOP cheap hotels in the selected location.
+ТОП дешевых отелей по введенным параметрам.
+
 * ### /highprice
-Output of the TOP expensive hotels in the selected location.
+ТОП дорогих отелей по введенным параметрам.
+
 * ### /bestdeal
-Conclusion of the TOP offers for hotels in the selected location according to the ratio of price and distance to the 
-city center (price is a priority).
+ТОП предложений по отелям, исходя из соотношения цены и расстояния до центра города 
+(стоимость в приоритете).
+
 * ### /history
-Output of the user's query history (data on the last 5 queries is output).
+История запросов (данные по последним 5 запросам).
 
-## Principle of communication with bot
-When selecting commands (/lowprice, /highprice, /bestdeal) the bot alternately asks for hotel search data: location, 
-check-in/check-out date (optional), price range and distances to the center (for the /bestdeal team), number of hotels 
-to display, whether to display photos to hotels, as well as number of photos (if you agree to display photos).
+## Принцип общения с ботом
+При выборе команд (/lowprice, /highprice, /bestdeal) бот поочередно запрашивает данные 
+для поиска отеля: локация для поиска, дату заезда / выезда (необязательно), диапазон цен и расстояния 
+до центра (для команды /bestdeal), количество отображаемых отелей, выводить ли фото отелей, 
+а также кол-во выводимых фотографий.
 
-For each hotel, the relevant data is provided for review.
+Для ознакомления предоставляются соответствующие данные по каждому отелю с ссылкой на страницу отеля.
+
+# Скриншоты
+![](/screens/1.png)
+![](/screens/2.png)
+![](/screens/3.png)
+![](/screens/4.png)
+![](/screens/5.png)
+![](/screens/6.png)
+![](/screens/7.png)
