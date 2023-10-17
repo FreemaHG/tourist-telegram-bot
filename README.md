@@ -13,7 +13,7 @@
 
 * Скачиваем файлы из репозитория:
 ```
-$ git clone https://gitlab.skillbox.ru/dmitrii_stafeev/python_basic_diploma.git
+$ git clone https://github.com/FreemaHG/tourist-telegram-bot.git
 ```
 * Устанавливаем зависимости:
 ```
